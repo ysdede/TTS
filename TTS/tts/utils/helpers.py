@@ -52,9 +52,7 @@ def sequence_mask(sequence_length, max_len=None):
     if max_len is None:
         max_len = sequence_length.data.max()
     seq_range = torch.arange(max_len, dtype=sequence_length.dtype, device=sequence_length.device)
-    # B x T_max
-    mask = seq_range.unsqueeze(0) < sequence_length.unsqueeze(1)
-    return mask
+    return seq_range.unsqueeze(0) < sequence_length.unsqueeze(1)
 
 
 def segment(x: torch.tensor, segment_indices: torch.tensor, segment_size=4, pad_short=False):
@@ -101,10 +99,9 @@ def rand_segments(
     """
     _x_lenghts = x_lengths.clone()
     B, _, T = x.size()
-    if pad_short:
-        if T < segment_size:
-            x = torch.nn.functional.pad(x, (0, segment_size - T))
-            T = segment_size
+    if pad_short and T < segment_size:
+        x = torch.nn.functional.pad(x, (0, segment_size - T))
+        T = segment_size
     if _x_lenghts is None:
         _x_lenghts = T
     len_diff = _x_lenghts - segment_size
@@ -141,8 +138,9 @@ def average_over_durations(values, durs):
     values_sums = (torch.gather(values_cums, 2, dce) - torch.gather(values_cums, 2, dcs)).float()
     values_nelems = (torch.gather(values_nonzero_cums, 2, dce) - torch.gather(values_nonzero_cums, 2, dcs)).float()
 
-    avg = torch.where(values_nelems == 0.0, values_nelems, values_sums / values_nelems)
-    return avg
+    return torch.where(
+        values_nelems == 0.0, values_nelems, values_sums / values_nelems
+    )
 
 
 def convert_pad_shape(pad_shape):

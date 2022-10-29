@@ -34,10 +34,10 @@ def _espeak_exe(espeak_lib: str, args: List, sync=False) -> List[str]:
     logging.debug("espeakng: executing %s", repr(cmd))
 
     with subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    ) as p:
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ) as p:
         res = iter(p.stdout.readline, b"")
         if not sync:
             p.stdout.close()
@@ -46,9 +46,7 @@ def _espeak_exe(espeak_lib: str, args: List, sync=False) -> List[str]:
             if p.stdin:
                 p.stdin.close()
             return res
-        res2 = []
-        for line in res:
-            res2.append(line)
+        res2 = list(res)
         p.stdout.close()
         if p.stderr:
             p.stderr.close()
@@ -108,7 +106,7 @@ class ESpeak(BasePhonemizer):
     @backend.setter
     def backend(self, backend):
         if backend not in ["espeak", "espeak-ng"]:
-            raise Exception("Unknown backend: %s" % backend)
+            raise Exception(f"Unknown backend: {backend}")
         self._ESPEAK_LIB = backend
 
     def auto_set_espeak_lib(self) -> None:
@@ -137,20 +135,17 @@ class ESpeak(BasePhonemizer):
         # set arguments
         args = ["-v", f"{self._language}"]
         # espeak and espeak-ng parses `ipa` differently
-        if tie:
-            # use '͡' between phonemes
-            if self.backend == "espeak":
-                args.append("--ipa=1")
-            else:
-                args.append("--ipa=3")
+        if (
+            tie
+            and self.backend == "espeak"
+            or not tie
+            and self.backend != "espeak"
+        ):
+            args.append("--ipa=1")
         else:
-            # split with '_'
-            if self.backend == "espeak":
-                args.append("--ipa=3")
-            else:
-                args.append("--ipa=1")
+            args.append("--ipa=3")
         if tie:
-            args.append("--tie=%s" % tie)
+            args.append(f"--tie={tie}")
 
         args.append('"' + text + '"')
         # compute phonemes
@@ -190,8 +185,7 @@ class ESpeak(BasePhonemizer):
             return {}
         args = ["--voices"]
         langs = {}
-        count = 0
-        for line in _espeak_exe(_DEF_ESPEAK_LIB, args, sync=True):
+        for count, line in enumerate(_espeak_exe(_DEF_ESPEAK_LIB, args, sync=True)):
             line = line.decode("utf8").strip()
             if count > 0:
                 cols = line.split()
@@ -199,7 +193,6 @@ class ESpeak(BasePhonemizer):
                 lang_name = cols[3]
                 langs[lang_code] = lang_name
             logging.debug("line: %s", repr(line))
-            count += 1
         return langs
 
     def version(self) -> str:

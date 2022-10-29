@@ -66,13 +66,12 @@ def remove_silence(
     # get speech timestamps from full audio file
     speech_timestamps = get_speech_timestamps(wav_vad, model, sampling_rate=vad_sample_rate, window_size_samples=768)
 
-    # map the current speech_timestamps to the sample rate of the ground truth audio
-    new_speech_timestamps = map_timestamps_to_new_sr(
-        vad_sample_rate, gt_sample_rate, speech_timestamps, trim_just_beginning_and_end
-    )
-
-    # if have speech timestamps else save the wav
-    if new_speech_timestamps:
+    if new_speech_timestamps := map_timestamps_to_new_sr(
+        vad_sample_rate,
+        gt_sample_rate,
+        speech_timestamps,
+        trim_just_beginning_and_end,
+    ):
         wav = collect_chunks(new_speech_timestamps, wav)
         is_speech = True
     else:

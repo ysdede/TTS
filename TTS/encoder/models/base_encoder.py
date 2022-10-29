@@ -103,7 +103,7 @@ class BaseEncoder(nn.Module):
         elif c.loss == "softmaxproto":
             criterion = SoftmaxAngleProtoLoss(c.model_params["proj_dim"], num_classes)
         else:
-            raise Exception("The %s  not is a loss supported" % c.loss)
+            raise Exception(f"The {c.loss}  not is a loss supported")
         return criterion
 
     def load_checkpoint(
@@ -150,6 +150,4 @@ class BaseEncoder(nn.Module):
             self.eval()
             assert not self.training
 
-        if not eval:
-            return criterion, state["step"]
-        return criterion
+        return criterion if eval else (criterion, state["step"])

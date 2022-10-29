@@ -21,7 +21,7 @@ DEF_LANG_TO_PHONEMIZER = dict(list(zip(GRUUT_LANGS, _)))
 # Add ESpeak languages and override any existing ones
 _ = [ESpeak.name()] * len(ESPEAK_LANGS)
 _new_dict = dict(list(zip(list(ESPEAK_LANGS), _)))
-DEF_LANG_TO_PHONEMIZER.update(_new_dict)
+DEF_LANG_TO_PHONEMIZER |= _new_dict
 
 # Force default for some languages
 DEF_LANG_TO_PHONEMIZER["en"] = DEF_LANG_TO_PHONEMIZER["en-us"]

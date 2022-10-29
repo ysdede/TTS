@@ -34,7 +34,7 @@ def stream_url(
 
     req = urllib.request.Request(url)
     if start_byte:
-        req.headers["Range"] = "bytes={}-".format(start_byte)
+        req.headers["Range"] = f"bytes={start_byte}-"
 
     with urllib.request.urlopen(req) as upointer, tqdm(
         unit="B",
@@ -87,7 +87,10 @@ def download_url(
         local_size: Optional[int] = os.path.getsize(filepath)
 
     elif not resume and os.path.exists(filepath):
-        raise RuntimeError("{} already exists. Delete the file manually and retry.".format(filepath))
+        raise RuntimeError(
+            f"{filepath} already exists. Delete the file manually and retry."
+        )
+
     else:
         mode = "wb"
         local_size = None
@@ -96,7 +99,10 @@ def download_url(
         with open(filepath, "rb") as file_obj:
             if validate_file(file_obj, hash_value, hash_type):
                 return
-        raise RuntimeError("The hash of {} does not match. Delete the file manually and retry.".format(filepath))
+        raise RuntimeError(
+            f"The hash of {filepath} does not match. Delete the file manually and retry."
+        )
+
 
     with open(filepath, mode) as fpointer:
         for chunk in stream_url(url, start_byte=local_size, progress_bar=progress_bar):
@@ -104,7 +110,9 @@ def download_url(
 
     with open(filepath, "rb") as file_obj:
         if hash_value and not validate_file(file_obj, hash_value, hash_type):
-            raise RuntimeError("The hash of {} does not match. Delete the file manually and retry.".format(filepath))
+            raise RuntimeError(
+                f"The hash of {filepath} does not match. Delete the file manually and retry."
+            )
 
 
 def validate_file(file_obj: Any, hash_value: str, hash_type: str = "sha256") -> bool:
@@ -119,20 +127,19 @@ def validate_file(file_obj: Any, hash_value: str, hash_type: str = "sha256") -> 
         bool: return True if its a valid file, else False.
     """
 
-    if hash_type == "sha256":
-        hash_func = hashlib.sha256()
-    elif hash_type == "md5":
+    if hash_type == "md5":
         hash_func = hashlib.md5()
+    elif hash_type == "sha256":
+        hash_func = hashlib.sha256()
     else:
         raise ValueError
 
     while True:
-        # Read by chunk to avoid filling memory
-        chunk = file_obj.read(1024**2)
-        if not chunk:
-            break
-        hash_func.update(chunk)
+        if chunk := file_obj.read(1024**2):
+            hash_func.update(chunk)
 
+        else:
+            break
     return hash_func.hexdigest() == hash_value
 
 

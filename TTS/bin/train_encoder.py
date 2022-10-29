@@ -32,8 +32,14 @@ print(" > Number of GPUs: ", num_gpus)
 
 
 def setup_loader(ap: AudioProcessor, is_val: bool = False, verbose: bool = False):
-    num_utter_per_class = c.num_utter_per_class if not is_val else c.eval_num_utter_per_class
-    num_classes_in_batch = c.num_classes_in_batch if not is_val else c.eval_num_classes_in_batch
+    num_utter_per_class = (
+        c.eval_num_utter_per_class if is_val else c.num_utter_per_class
+    )
+
+    num_classes_in_batch = (
+        c.eval_num_classes_in_batch if is_val else c.num_classes_in_batch
+    )
+
 
     dataset = EncoderDataset(
         c,
@@ -43,9 +49,10 @@ def setup_loader(ap: AudioProcessor, is_val: bool = False, verbose: bool = False
         num_utter_per_class=num_utter_per_class,
         num_classes_in_batch=num_classes_in_batch,
         verbose=verbose,
-        augmentation_config=c.audio_augmentation if not is_val else None,
+        augmentation_config=None if is_val else c.audio_augmentation,
         use_torch_spec=c.model_params.get("use_torch_spec", False),
     )
+
     # get classes list
     classes = dataset.get_class_list()
 
@@ -84,7 +91,7 @@ def setup_loader(ap: AudioProcessor, is_val: bool = False, verbose: bool = False
 
 def evaluation(model, criterion, data_loader, global_step):
     eval_loss = 0
-    for _, data in enumerate(data_loader):
+    for data in data_loader:
         with torch.no_grad():
             # setup input data
             inputs, labels = data
@@ -292,7 +299,7 @@ def main(args):  # pylint: disable=redefined-outer-name
         scheduler = None
 
     num_params = count_parameters(model)
-    print("\n > Model has {} parameters".format(num_params), flush=True)
+    print(f"\n > Model has {num_params} parameters", flush=True)
 
     if use_cuda:
         model = model.cuda()

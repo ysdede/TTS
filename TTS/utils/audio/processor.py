@@ -213,7 +213,7 @@ class AudioProcessor(object):
         if verbose:
             print(" > Setting up Audio Processor...")
             for key, value in members.items():
-                print(" | > {}:{}".format(key, value))
+                print(f" | > {key}:{value}")
         # create spectrogram utils
         self.mel_basis = self._build_mel_basis()
         self.inv_mel_basis = np.linalg.pinv(self._build_mel_basis())
@@ -276,32 +276,30 @@ class AudioProcessor(object):
         """
         # pylint: disable=no-else-return
         S = S.copy()
-        if self.signal_norm:
-            # mean-var scaling
-            if hasattr(self, "mel_scaler"):
-                if S.shape[0] == self.num_mels:
-                    return self.mel_scaler.transform(S.T).T
-                elif S.shape[0] == self.fft_size / 2:
-                    return self.linear_scaler.transform(S.T).T
-                else:
-                    raise RuntimeError(" [!] Mean-Var stats does not match the given feature dimensions.")
-            # range normalization
-            S -= self.ref_level_db  # discard certain range of DB assuming it is air noise
-            S_norm = (S - self.min_level_db) / (-self.min_level_db)
-            if self.symmetric_norm:
-                S_norm = ((2 * self.max_norm) * S_norm) - self.max_norm
-                if self.clip_norm:
-                    S_norm = np.clip(
-                        S_norm, -self.max_norm, self.max_norm  # pylint: disable=invalid-unary-operand-type
-                    )
-                return S_norm
-            else:
-                S_norm = self.max_norm * S_norm
-                if self.clip_norm:
-                    S_norm = np.clip(S_norm, 0, self.max_norm)
-                return S_norm
-        else:
+        if not self.signal_norm:
             return S
+        # mean-var scaling
+        if hasattr(self, "mel_scaler"):
+            if S.shape[0] == self.num_mels:
+                return self.mel_scaler.transform(S.T).T
+            elif S.shape[0] == self.fft_size / 2:
+                return self.linear_scaler.transform(S.T).T
+            else:
+                raise RuntimeError(" [!] Mean-Var stats does not match the given feature dimensions.")
+        # range normalization
+        S -= self.ref_level_db  # discard certain range of DB assuming it is air noise
+        S_norm = (S - self.min_level_db) / (-self.min_level_db)
+        if self.symmetric_norm:
+            S_norm = ((2 * self.max_norm) * S_norm) - self.max_norm
+            if self.clip_norm:
+                S_norm = np.clip(
+                    S_norm, -self.max_norm, self.max_norm  # pylint: disable=invalid-unary-operand-type
+                )
+        else:
+            S_norm = self.max_norm * S_norm
+            if self.clip_norm:
+                S_norm = np.clip(S_norm, 0, self.max_norm)
+        return S_norm
 
     def denormalize(self, S: np.ndarray) -> np.ndarray:
         """Denormalize spectrogram values.
@@ -317,29 +315,27 @@ class AudioProcessor(object):
         """
         # pylint: disable=no-else-return
         S_denorm = S.copy()
-        if self.signal_norm:
-            # mean-var scaling
-            if hasattr(self, "mel_scaler"):
-                if S_denorm.shape[0] == self.num_mels:
-                    return self.mel_scaler.inverse_transform(S_denorm.T).T
-                elif S_denorm.shape[0] == self.fft_size / 2:
-                    return self.linear_scaler.inverse_transform(S_denorm.T).T
-                else:
-                    raise RuntimeError(" [!] Mean-Var stats does not match the given feature dimensions.")
-            if self.symmetric_norm:
-                if self.clip_norm:
-                    S_denorm = np.clip(
-                        S_denorm, -self.max_norm, self.max_norm  # pylint: disable=invalid-unary-operand-type
-                    )
-                S_denorm = ((S_denorm + self.max_norm) * -self.min_level_db / (2 * self.max_norm)) + self.min_level_db
-                return S_denorm + self.ref_level_db
-            else:
-                if self.clip_norm:
-                    S_denorm = np.clip(S_denorm, 0, self.max_norm)
-                S_denorm = (S_denorm * -self.min_level_db / self.max_norm) + self.min_level_db
-                return S_denorm + self.ref_level_db
-        else:
+        if not self.signal_norm:
             return S_denorm
+        # mean-var scaling
+        if hasattr(self, "mel_scaler"):
+            if S_denorm.shape[0] == self.num_mels:
+                return self.mel_scaler.inverse_transform(S_denorm.T).T
+            elif S_denorm.shape[0] == self.fft_size / 2:
+                return self.linear_scaler.inverse_transform(S_denorm.T).T
+            else:
+                raise RuntimeError(" [!] Mean-Var stats does not match the given feature dimensions.")
+        if self.symmetric_norm:
+            if self.clip_norm:
+                S_denorm = np.clip(
+                    S_denorm, -self.max_norm, self.max_norm  # pylint: disable=invalid-unary-operand-type
+                )
+            S_denorm = ((S_denorm + self.max_norm) * -self.min_level_db / (2 * self.max_norm)) + self.min_level_db
+        else:
+            if self.clip_norm:
+                S_denorm = np.clip(S_denorm, 0, self.max_norm)
+            S_denorm = (S_denorm * -self.min_level_db / self.max_norm) + self.min_level_db
+        return S_denorm + self.ref_level_db
 
     ### Mean-STD scaling ###
     def load_stats(self, stats_path: str) -> Tuple[np.array, np.array, np.array, np.array, Dict]:
@@ -463,10 +459,7 @@ class AudioProcessor(object):
             D = self._stft(self.apply_preemphasis(y))
         else:
             D = self._stft(y)
-        if self.do_amp_to_db_linear:
-            S = self._amp_to_db(np.abs(D))
-        else:
-            S = np.abs(D)
+        S = self._amp_to_db(np.abs(D)) if self.do_amp_to_db_linear else np.abs(D)
         return self.normalize(S).astype(np.float32)
 
     def melspectrogram(self, y: np.ndarray) -> np.ndarray:
@@ -512,8 +505,7 @@ class AudioProcessor(object):
         S = self._db_to_amp(S)
         S = self._linear_to_mel(np.abs(S))
         S = self._amp_to_db(S)
-        mel = self.normalize(S)
-        return mel
+        return self.normalize(S)
 
     ### STFT and ISTFT ###
     def _stft(self, y: np.ndarray) -> np.ndarray:
@@ -556,9 +548,7 @@ class AudioProcessor(object):
         (first and final frames)"""
         assert pad_sides in (1, 2)
         pad = (x.shape[0] // self.hop_length + 1) * self.hop_length - x.shape[0]
-        if pad_sides == 1:
-            return 0, pad
-        return pad // 2, pad // 2 + pad % 2
+        return (0, pad) if pad_sides == 1 else (pad // 2, pad // 2 + pad % 2)
 
     def compute_f0(self, x: np.ndarray) -> np.ndarray:
         """Compute pitch (f0) of a waveform using the same parameters used for computing melspectrogram.
@@ -584,7 +574,7 @@ class AudioProcessor(object):
         if len(x) % self.hop_length == 0:
             x = np.pad(x, (0, self.hop_length // 2), mode=self.stft_pad_mode)
 
-        f0 = compute_f0(
+        return compute_f0(
             x=x,
             pitch_fmax=self.pitch_fmax,
             pitch_fmin=self.pitch_fmin,
@@ -594,8 +584,6 @@ class AudioProcessor(object):
             stft_pad_mode=self.stft_pad_mode,
             center=True,
         )
-
-        return f0
 
     ### Audio Processing ###
     def find_endpoint(self, wav: np.ndarray, min_silence_sec=0.8) -> int:
@@ -610,12 +598,16 @@ class AudioProcessor(object):
             int: Last point without silence.
         """
         window_length = int(self.sample_rate * min_silence_sec)
-        hop_length = int(window_length / 4)
+        hop_length = window_length // 4
         threshold = self._db_to_amp(-self.trim_db)
-        for x in range(hop_length, len(wav) - window_length, hop_length):
-            if np.max(wav[x : x + window_length]) < threshold:
-                return x + hop_length
-        return len(wav)
+        return next(
+            (
+                x + hop_length
+                for x in range(hop_length, len(wav) - window_length, hop_length)
+                if np.max(wav[x : x + window_length]) < threshold
+            ),
+            len(wav),
+        )
 
     def trim_silence(self, wav):
         """Trim silent parts with a threshold and 0.01 sec margin"""
@@ -655,8 +647,7 @@ class AudioProcessor(object):
         if db_level is None:
             db_level = self.db_level
         assert -99 <= db_level <= 0, " [!] db_level should be between -99 and 0"
-        wav = self._rms_norm(x, db_level)
-        return wav
+        return self._rms_norm(x, db_level)
 
     ### save and load ###
     def load_wav(self, filename: str, sr: int = None) -> np.ndarray:
@@ -677,7 +668,7 @@ class AudioProcessor(object):
         elif sr is None:
             # SF is faster than librosa for loading files
             x, sr = sf.read(filename)
-            assert self.sample_rate == sr, "%s vs %s" % (self.sample_rate, sr)
+            assert self.sample_rate == sr, f"{self.sample_rate} vs {sr}"
         else:
             x, sr = librosa.load(filename, sr=sr)
         if self.do_trim_silence:
@@ -704,7 +695,7 @@ class AudioProcessor(object):
         else:
             wav_norm = wav * (32767 / max(0.01, np.max(np.abs(wav))))
 
-        scipy.io.wavfile.write(path, sr if sr else self.sample_rate, wav_norm.astype(np.int16))
+        scipy.io.wavfile.write(path, sr or self.sample_rate, wav_norm.astype(np.int16))
 
     def get_duration(self, filename: str) -> float:
         """Get the duration of a wav file using Librosa.
@@ -729,8 +720,7 @@ class AudioProcessor(object):
     def mulaw_decode(wav, qc):
         """Recovers waveform from quantized values."""
         mu = 2**qc - 1
-        x = np.sign(wav) / mu * ((1 + mu) ** np.abs(wav) - 1)
-        return x
+        return np.sign(wav) / mu * ((1 + mu) ** np.abs(wav) - 1)
 
     @staticmethod
     def encode_16bits(x):
@@ -756,12 +746,8 @@ class AudioProcessor(object):
 
 
 def _log(x, base):
-    if base == 10:
-        return np.log10(x)
-    return np.log(x)
+    return np.log10(x) if base == 10 else np.log(x)
 
 
 def _exp(x, base):
-    if base == 10:
-        return np.power(10, x)
-    return np.exp(x)
+    return np.power(10, x) if base == 10 else np.exp(x)

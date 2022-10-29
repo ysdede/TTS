@@ -5,9 +5,9 @@ from TTS.utils.io import save_fsspec
 
 
 def save_checkpoint(model, optimizer, model_loss, out_path, current_step):
-    checkpoint_path = "checkpoint_{}.pth".format(current_step)
+    checkpoint_path = f"checkpoint_{current_step}.pth"
     checkpoint_path = os.path.join(out_path, checkpoint_path)
-    print(" | | > Checkpoint saving : {}".format(checkpoint_path))
+    print(f" | | > Checkpoint saving : {checkpoint_path}")
 
     new_state_dict = model.state_dict()
     state = {

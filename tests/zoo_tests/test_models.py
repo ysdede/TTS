@@ -23,8 +23,8 @@ def test_run_all_models():
         if "tts_models" in model_name:
             local_download_dir = os.path.dirname(model_path)
             # download and run the model
-            speaker_files = glob.glob(local_download_dir + "/speaker*")
-            language_files = glob.glob(local_download_dir + "/language*")
+            speaker_files = glob.glob(f"{local_download_dir}/speaker*")
+            language_files = glob.glob(f"{local_download_dir}/language*")
             language_id = ""
             if len(speaker_files) > 0:
                 # multi-speaker model

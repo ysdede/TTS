@@ -47,7 +47,7 @@ def main():
     if not c.phoneme_language or not is_lang_def:
         raise ValueError("Phoneme language must be defined in config.")
 
-    if not language_list.count(language_list[0]) == len(language_list):
+    if language_list.count(language_list[0]) != len(language_list):
         raise ValueError(
             "Currently, just one phoneme language per config file is supported !! Please split the dataset config into different configs and run it individually for each language !!"
         )

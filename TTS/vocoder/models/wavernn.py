@@ -265,14 +265,14 @@ class Wavernn(BaseVocoder):
             self.rnn2 = nn.GRU(self.args.rnn_dims + self.aux_dims, self.args.rnn_dims, batch_first=True)
             self.fc1 = nn.Linear(self.args.rnn_dims + self.aux_dims, self.args.fc_dims)
             self.fc2 = nn.Linear(self.args.fc_dims + self.aux_dims, self.args.fc_dims)
-            self.fc3 = nn.Linear(self.args.fc_dims, self.n_classes)
         else:
             self.I = nn.Linear(self.args.feat_dims + 1, self.args.rnn_dims)
             self.rnn1 = nn.GRU(self.args.rnn_dims, self.args.rnn_dims, batch_first=True)
             self.rnn2 = nn.GRU(self.args.rnn_dims, self.args.rnn_dims, batch_first=True)
             self.fc1 = nn.Linear(self.args.rnn_dims, self.args.fc_dims)
             self.fc2 = nn.Linear(self.args.fc_dims, self.args.fc_dims)
-            self.fc3 = nn.Linear(self.args.fc_dims, self.n_classes)
+
+        self.fc3 = nn.Linear(self.args.fc_dims, self.n_classes)
 
     def forward(self, x, mels):
         bsize = x.size(0)
@@ -581,14 +581,13 @@ class Wavernn(BaseVocoder):
             x = x.to(next(self.parameters()).device)
             y_hat = self.inference(x, self.config.batched, self.config.target_samples, self.config.overlap_samples)
             x_hat = ap.melspectrogram(y_hat)
-            figures.update(
-                {
-                    f"test_{idx}/ground_truth": plot_spectrogram(x.T),
-                    f"test_{idx}/prediction": plot_spectrogram(x_hat.T),
-                }
-            )
-            audios.update({f"test_{idx}/audio": y_hat})
-            # audios.update({f"real_{idx}/audio": y_hat})
+            figures |= {
+                f"test_{idx}/ground_truth": plot_spectrogram(x.T),
+                f"test_{idx}/prediction": plot_spectrogram(x_hat.T),
+            }
+
+            audios[f"test_{idx}/audio"] = y_hat
+                # audios.update({f"real_{idx}/audio": y_hat})
         return figures, audios
 
     def test_log(
@@ -627,16 +626,17 @@ class Wavernn(BaseVocoder):
             verbose=verbose,
         )
         sampler = DistributedSampler(dataset, shuffle=True) if num_gpus > 1 else None
-        loader = DataLoader(
+        return DataLoader(
             dataset,
             batch_size=1 if is_eval else config.batch_size,
             shuffle=num_gpus == 0,
             collate_fn=dataset.collate,
             sampler=sampler,
-            num_workers=config.num_eval_loader_workers if is_eval else config.num_loader_workers,
+            num_workers=config.num_eval_loader_workers
+            if is_eval
+            else config.num_loader_workers,
             pin_memory=True,
         )
-        return loader
 
     def get_criterion(self):
         # define train functions

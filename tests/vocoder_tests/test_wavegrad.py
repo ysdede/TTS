@@ -15,7 +15,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class WavegradTrainTest(unittest.TestCase):
-    def test_train_step(self):  # pylint: disable=no-self-use
+    def test_train_step(self):    # pylint: disable=no-self-use
         """Test if all layers are updated in a basic training cycle"""
         input_dummy = torch.rand(8, 1, 20 * 300).to(device)
         mel_spec = torch.rand(8, 80, 20).to(device)
@@ -37,23 +37,18 @@ class WavegradTrainTest(unittest.TestCase):
         model.compute_noise_level(betas)
         model_ref.load_state_dict(model.state_dict())
         model_ref.to(device)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=0.001)
-        for i in range(5):
+        for _ in range(5):
             y_hat = model.forward(input_dummy, mel_spec, torch.rand(8).to(device))
             optimizer.zero_grad()
             loss = criterion(y_hat, input_dummy)
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
             # if count not in [145, 59]:
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"

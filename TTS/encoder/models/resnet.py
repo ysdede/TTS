@@ -136,12 +136,9 @@ class ResNetSpeakerEncoder(BaseEncoder):
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
+        layers = [block(self.inplanes, planes, stride, downsample)]
         self.inplanes = planes * block.expansion
-        for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-
+        layers.extend(block(self.inplanes, planes) for _ in range(1, blocks))
         return nn.Sequential(*layers)
 
     # pylint: disable=R0201

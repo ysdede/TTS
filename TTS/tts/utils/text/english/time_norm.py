@@ -22,14 +22,12 @@ def _expand_num(n: int) -> str:
 def _expand_time_english(match: "re.Match") -> str:
     hour = int(match.group(1))
     past_noon = hour >= 12
-    time = []
     if hour > 12:
         hour -= 12
     elif hour == 0:
         hour = 12
         past_noon = True
-    time.append(_expand_num(hour))
-
+    time = [_expand_num(hour)]
     minute = int(match.group(6))
     if minute > 0:
         if minute < 10:

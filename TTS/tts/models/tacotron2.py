@@ -177,13 +177,18 @@ class Tacotron2(BaseTacotron):
             # B x gst_dim
             encoder_outputs = self.compute_gst(encoder_outputs, mel_specs)
 
-        if self.use_speaker_embedding or self.use_d_vector_file:
-            if not self.use_d_vector_file:
-                # B x 1 x speaker_embed_dim
-                embedded_speakers = self.speaker_embedding(aux_input["speaker_ids"])[:, None]
-            else:
-                # B x 1 x speaker_embed_dim
-                embedded_speakers = torch.unsqueeze(aux_input["d_vectors"], 1)
+        if self.use_speaker_embedding:
+            embedded_speakers = (
+                torch.unsqueeze(aux_input["d_vectors"], 1)
+                if self.use_d_vector_file
+                else self.speaker_embedding(aux_input["speaker_ids"])[:, None]
+            )
+
+            encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
+
+        elif self.use_d_vector_file:
+            # B x 1 x speaker_embed_dim
+            embedded_speakers = torch.unsqueeze(aux_input["d_vectors"], 1)
             encoder_outputs = self._concat_speaker_embedding(encoder_outputs, embedded_speakers)
 
         # capacitron
@@ -225,15 +230,14 @@ class Tacotron2(BaseTacotron):
             )
             outputs["alignments_backward"] = alignments_backward
             outputs["decoder_outputs_backward"] = decoder_outputs_backward
-        outputs.update(
-            {
-                "model_outputs": postnet_outputs,
-                "decoder_outputs": decoder_outputs,
-                "alignments": alignments,
-                "stop_tokens": stop_tokens,
-                "capacitron_vae_outputs": capacitron_vae_outputs,
-            }
-        )
+        outputs |= {
+            "model_outputs": postnet_outputs,
+            "decoder_outputs": decoder_outputs,
+            "alignments": alignments,
+            "stop_tokens": stop_tokens,
+            "capacitron_vae_outputs": capacitron_vae_outputs,
+        }
+
         return outputs
 
     @torch.no_grad()
@@ -292,13 +296,12 @@ class Tacotron2(BaseTacotron):
         postnet_outputs = self.postnet(decoder_outputs)
         postnet_outputs = decoder_outputs + postnet_outputs
         decoder_outputs, postnet_outputs, alignments = self.shape_outputs(decoder_outputs, postnet_outputs, alignments)
-        outputs = {
+        return {
             "model_outputs": postnet_outputs,
             "decoder_outputs": decoder_outputs,
             "alignments": alignments,
             "stop_tokens": stop_tokens,
         }
-        return outputs
 
     def before_backward_pass(self, loss_dict, optimizer) -> None:
         # Extracting custom training specific operations for capacitron
@@ -370,11 +373,12 @@ class Tacotron2(BaseTacotron):
     def before_gradient_clipping(self):
         if self.use_capacitron_vae:
             # Capacitron model specific gradient clipping
-            model_params_to_clip = []
-            for name, param in self.named_parameters():
-                if param.requires_grad:
-                    if name != "capacitron_vae_layer.beta":
-                        model_params_to_clip.append(param)
+            model_params_to_clip = [
+                param
+                for name, param in self.named_parameters()
+                if param.requires_grad and name != "capacitron_vae_layer.beta"
+            ]
+
             torch.nn.utils.clip_grad_norm_(model_params_to_clip, self.capacitron_vae.capacitron_grad_clip)
 
     def _create_logs(self, batch, outputs, ap):

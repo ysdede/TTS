@@ -425,9 +425,7 @@ class MonotonicDynamicConvolutionAttention(nn.Module):
         if mask is not None:
             attention_weights.data.masked_fill_(~mask, self._mask_value)
         self.attention_weights = attention_weights
-        # compute context
-        context = torch.bmm(attention_weights.unsqueeze(1), inputs).squeeze(1)
-        return context
+        return torch.bmm(attention_weights.unsqueeze(1), inputs).squeeze(1)
 
     def preprocess_inputs(self, inputs):  # pylint: disable=no-self-use
         return None

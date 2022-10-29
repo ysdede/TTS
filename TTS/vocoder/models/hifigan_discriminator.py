@@ -107,7 +107,7 @@ class MultiPeriodDiscriminator(torch.nn.Module):
         """
         scores = []
         feats = []
-        for _, d in enumerate(self.discriminators):
+        for d in self.discriminators:
             score, feat = d(x)
             scores.append(score)
             feats.append(feat)

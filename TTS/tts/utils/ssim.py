@@ -146,10 +146,7 @@ def ssim(
     ssim_val = _reduce(ssim_val, reduction)
     cs = _reduce(cs, reduction)
 
-    if full:
-        return [ssim_val, cs]
-
-    return ssim_val
+    return [ssim_val, cs] if full else ssim_val
 
 
 class SSIMLoss(_Loss):

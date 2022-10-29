@@ -36,9 +36,9 @@ def noise_augment_audio(wav):
 
 
 def string2filename(string):
-    # generate a safe and reversible filename based on a string
-    filename = base64.urlsafe_b64encode(string.encode("utf-8")).decode("utf-8", "ignore")
-    return filename
+    return base64.urlsafe_b64encode(string.encode("utf-8")).decode(
+        "utf-8", "ignore"
+    )
 
 
 class TTSDataset(Dataset):
@@ -248,12 +248,8 @@ class TTSDataset(Dataset):
             self.rescue_item_idx += 1
             return self.load_data(self.rescue_item_idx)
 
-        # get f0 values
-        f0 = None
-        if self.compute_f0:
-            f0 = self.get_f0(idx)["f0"]
-
-        sample = {
+        f0 = self.get_f0(idx)["f0"] if self.compute_f0 else None
+        return {
             "raw_text": raw_text,
             "token_ids": token_ids,
             "wav": wav,
@@ -265,7 +261,6 @@ class TTSDataset(Dataset):
             "wav_file_name": os.path.basename(item["audio_file"]),
             "audio_unique_name": item["audio_unique_name"],
         }
-        return sample
 
     @staticmethod
     def _compute_lengths(samples):
@@ -294,8 +289,7 @@ class TTSDataset(Dataset):
     @staticmethod
     def sort_by_length(samples: List[List]):
         audio_lengths = [s["audio_length"] for s in samples]
-        idxs = np.argsort(audio_lengths)  # ascending order
-        return idxs
+        return np.argsort(audio_lengths)
 
     @staticmethod
     def create_buckets(samples, batch_group_size: int):
@@ -310,10 +304,7 @@ class TTSDataset(Dataset):
 
     @staticmethod
     def _select_samples_by_idx(idxs, samples):
-        samples_new = []
-        for idx in idxs:
-            samples_new.append(samples[idx])
-        return samples_new
+        return [samples[idx] for idx in idxs]
 
     def preprocess_samples(self):
         r"""Sort `items` based on text length or audio length in ascending order. Filter out samples out or the length
@@ -356,15 +347,15 @@ class TTSDataset(Dataset):
 
         if self.verbose:
             print(" | > Preprocessing samples")
-            print(" | > Max text length: {}".format(np.max(text_lengths)))
-            print(" | > Min text length: {}".format(np.min(text_lengths)))
-            print(" | > Avg text length: {}".format(np.mean(text_lengths)))
+            print(f" | > Max text length: {np.max(text_lengths)}")
+            print(f" | > Min text length: {np.min(text_lengths)}")
+            print(f" | > Avg text length: {np.mean(text_lengths)}")
             print(" | ")
-            print(" | > Max audio length: {}".format(np.max(audio_lengths)))
-            print(" | > Min audio length: {}".format(np.min(audio_lengths)))
-            print(" | > Avg audio length: {}".format(np.mean(audio_lengths)))
+            print(f" | > Max audio length: {np.max(audio_lengths)}")
+            print(f" | > Min audio length: {np.min(audio_lengths)}")
+            print(f" | > Avg audio length: {np.mean(audio_lengths)}")
             print(f" | > Num. instances discarded samples: {len(ignore_idx)}")
-            print(" | > Batch group size: {}.".format(self.batch_group_size))
+            print(f" | > Batch group size: {self.batch_group_size}.")
 
     @staticmethod
     def _sort_batch(batch, text_lengths):
@@ -698,7 +689,7 @@ class F0Dataset:
             computed_data = []
             for batch in dataloder:
                 f0 = batch["f0"]
-                computed_data.append(f for f in f0)
+                computed_data.append(iter(f0))
                 pbar.update(batch_size)
             self.normalize_f0 = normalize_f0
 
@@ -713,8 +704,7 @@ class F0Dataset:
 
     @staticmethod
     def create_pitch_file_path(file_name, cache_path):
-        pitch_file = os.path.join(cache_path, file_name + "_pitch.npy")
-        return pitch_file
+        return os.path.join(cache_path, f"{file_name}_pitch.npy")
 
     @staticmethod
     def _compute_and_save_pitch(ap, wav_file, pitch_file=None):
@@ -755,10 +745,12 @@ class F0Dataset:
         compute pitch and return a numpy array of pitch values
         """
         pitch_file = self.create_pitch_file_path(audio_unique_name, self.cache_path)
-        if not os.path.exists(pitch_file):
-            pitch = self._compute_and_save_pitch(self.ap, wav_file, pitch_file)
-        else:
-            pitch = np.load(pitch_file)
+        pitch = (
+            np.load(pitch_file)
+            if os.path.exists(pitch_file)
+            else self._compute_and_save_pitch(self.ap, wav_file, pitch_file)
+        )
+
         return pitch.astype(np.float32)
 
     def collate_fn(self, batch):

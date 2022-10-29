@@ -68,11 +68,12 @@ def main():
     linear_scale = np.sqrt(linear_square_sum / N - linear_mean**2)
 
     output_file_path = args.out_path
-    stats = {}
-    stats["mel_mean"] = mel_mean
-    stats["mel_std"] = mel_scale
-    stats["linear_mean"] = linear_mean
-    stats["linear_std"] = linear_scale
+    stats = {
+        "mel_mean": mel_mean,
+        "mel_std": mel_scale,
+        "linear_mean": linear_mean,
+        "linear_std": linear_scale,
+    }
 
     print(f" > Avg mel spec mean: {mel_mean.mean()}")
     print(f" > Avg mel spec scale: {mel_scale.mean()}")

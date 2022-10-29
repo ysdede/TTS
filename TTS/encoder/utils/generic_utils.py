@@ -20,14 +20,14 @@ class AugmentWAV(object):
 
         if "additive" in augmentation_config.keys():
             self.additive_noise_config = augmentation_config["additive"]
-            additive_path = self.additive_noise_config["sounds_path"]
-            if additive_path:
+            if additive_path := self.additive_noise_config["sounds_path"]:
                 self.use_additive_noise = True
                 # get noise types
-                self.additive_noise_types = []
-                for key in self.additive_noise_config.keys():
-                    if isinstance(self.additive_noise_config[key], dict):
-                        self.additive_noise_types.append(key)
+                self.additive_noise_types = [
+                    key
+                    for key in self.additive_noise_config.keys()
+                    if isinstance(self.additive_noise_config[key], dict)
+                ]
 
                 additive_files = glob.glob(os.path.join(additive_path, "**/*.wav"), recursive=True)
 
@@ -38,7 +38,7 @@ class AugmentWAV(object):
                     # ignore not listed directories
                     if noise_dir not in self.additive_noise_types:
                         continue
-                    if not noise_dir in self.noise_list:
+                    if noise_dir not in self.noise_list:
                         self.noise_list[noise_dir] = []
                     self.noise_list[noise_dir].append(wav_file)
 
@@ -147,9 +147,9 @@ def setup_encoder_model(config: "Coqpit"):
 
 
 def save_checkpoint(model, optimizer, criterion, model_loss, out_path, current_step, epoch):
-    checkpoint_path = "checkpoint_{}.pth".format(current_step)
+    checkpoint_path = f"checkpoint_{current_step}.pth"
     checkpoint_path = os.path.join(out_path, checkpoint_path)
-    print(" | | > Checkpoint saving : {}".format(checkpoint_path))
+    print(f" | | > Checkpoint saving : {checkpoint_path}")
 
     new_state_dict = model.state_dict()
     state = {

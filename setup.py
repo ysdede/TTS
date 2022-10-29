@@ -32,7 +32,10 @@ from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
 
 if LooseVersion(sys.version) < LooseVersion("3.7") or LooseVersion(sys.version) >= LooseVersion("3.11"):
-    raise RuntimeError("TTS requires python >= 3.7 and < 3.11 " "but your Python version is {}".format(sys.version))
+    raise RuntimeError(
+        f"TTS requires python >= 3.7 and < 3.11 but your Python version is {sys.version}"
+    )
+
 
 
 cwd = os.path.dirname(os.path.abspath(__file__))

@@ -79,7 +79,7 @@ class ModelManager(object):
         model_count = 1
         model_type = "tts_models"
         models_name_list.extend(self._list_models(model_type, model_count))
-        return [name.replace(model_type + "/", "") for name in models_name_list]
+        return [name.replace(f"{model_type}/", "") for name in models_name_list]
 
     def list_models(self):
         print(" Name format: type/language/dataset/model")
@@ -367,6 +367,6 @@ class ModelManager(object):
         if key in my_dict.keys() and my_dict[key] is not None:
             if not isinstance(key, str):
                 return True
-            if isinstance(key, str) and len(my_dict[key]) > 0:
+            if len(my_dict[key]) > 0:
                 return True
         return False

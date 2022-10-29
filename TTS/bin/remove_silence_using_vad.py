@@ -39,8 +39,8 @@ def preprocess_audios():
     else:
         print("> Trimming all nonspeech parts.")
 
-    filtered_files = []
     if files:
+        filtered_files = []
         # create threads
         # num_threads = multiprocessing.cpu_count()
         # process_map(adjust_path_and_remove_silence, files, max_workers=num_threads, chunksize=15)

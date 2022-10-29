@@ -135,11 +135,7 @@ def visualize(
 ):
     """Intended to be used in Notebooks."""
 
-    if decoder_output is not None:
-        num_plot = 4
-    else:
-        num_plot = 3
-
+    num_plot = 4 if decoder_output is not None else 3
     label_fontsize = 16
     fig = plt.figure(figsize=figsize)
 

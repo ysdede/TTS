@@ -175,8 +175,7 @@ class RelativePositionMultiHeadAttention(nn.Module):
             -re: :math:`[H or 1, V, D]`
             -logits: :math:`[B, H, T, D]`
         """
-        logits = torch.matmul(p_attn, re.unsqueeze(0))
-        return logits
+        return torch.matmul(p_attn, re.unsqueeze(0))
 
     @staticmethod
     def _matmul_with_relative_keys(query, re):
@@ -190,9 +189,7 @@ class RelativePositionMultiHeadAttention(nn.Module):
             - re: :math:`[H or 1, V, D]`
             - logits: :math:`[B, H, T, V]`
         """
-        # logits = torch.einsum('bhld, kmd -> bhlm', [query, re.to(query.dtype)])
-        logits = torch.matmul(query, re.unsqueeze(0).transpose(-2, -1))
-        return logits
+        return torch.matmul(query, re.unsqueeze(0).transpose(-2, -1))
 
     def _get_relative_embeddings(self, relative_embeddings, length):
         """Convert embedding vestors to a tensor of embeddings"""
@@ -204,8 +201,7 @@ class RelativePositionMultiHeadAttention(nn.Module):
             padded_relative_embeddings = F.pad(relative_embeddings, [0, 0, pad_length, pad_length, 0, 0])
         else:
             padded_relative_embeddings = relative_embeddings
-        used_relative_embeddings = padded_relative_embeddings[:, slice_start_position:slice_end_position]
-        return used_relative_embeddings
+        return padded_relative_embeddings[:, slice_start_position:slice_end_position]
 
     @staticmethod
     def _relative_position_to_absolute_position(x):
@@ -221,9 +217,9 @@ class RelativePositionMultiHeadAttention(nn.Module):
         # Pad extra elements so to add up to shape (len+1, 2*len-1).
         x_flat = x.view([batch, heads, length * 2 * length])
         x_flat = F.pad(x_flat, [0, length - 1, 0, 0, 0, 0])
-        # Reshape and slice out the padded elements.
-        x_final = x_flat.view([batch, heads, length + 1, 2 * length - 1])[:, :, :length, length - 1 :]
-        return x_final
+        return x_flat.view([batch, heads, length + 1, 2 * length - 1])[
+            :, :, :length, length - 1 :
+        ]
 
     @staticmethod
     def _absolute_position_to_relative_position(x):
@@ -238,8 +234,7 @@ class RelativePositionMultiHeadAttention(nn.Module):
         x_flat = x.view([batch, heads, length**2 + length * (length - 1)])
         # add 0's in the beginning that will skew the elements after reshape
         x_flat = F.pad(x_flat, [length, 0, 0, 0, 0, 0])
-        x_final = x_flat.view([batch, heads, length, 2 * length])[:, :, :, 1:]
-        return x_final
+        return x_flat.view([batch, heads, length, 2 * length])[:, :, :, 1:]
 
     @staticmethod
     def _attn_proximity_bias(length):
@@ -280,11 +275,7 @@ class FeedForwardNetwork(nn.Module):
         self.kernel_size = kernel_size
         self.dropout_p = dropout_p
 
-        if causal:
-            self.padding = self._causal_padding
-        else:
-            self.padding = self._same_padding
-
+        self.padding = self._causal_padding if causal else self._same_padding
         self.conv_1 = nn.Conv1d(in_channels, hidden_channels, kernel_size)
         self.conv_2 = nn.Conv1d(hidden_channels, out_channels, kernel_size)
         self.dropout = nn.Dropout(dropout_p)
@@ -317,8 +308,7 @@ class FeedForwardNetwork(nn.Module):
     @staticmethod
     def _pad_shape(padding):
         l = padding[::-1]
-        pad_shape = [item for sublist in l for item in sublist]
-        return pad_shape
+        return [item for sublist in l for item in sublist]
 
 
 class RelativePositionTransformer(nn.Module):

@@ -65,8 +65,7 @@ class WaveGradDataset(Dataset):
         return len(self.item_list)
 
     def __getitem__(self, idx):
-        item = self.load_item(idx)
-        return item
+        return self.load_item(idx)
 
     def load_test_samples(self, num_samples: int) -> List[Tuple]:
         """Return test samples.
@@ -137,8 +136,18 @@ class WaveGradDataset(Dataset):
     def collate_full_clips(batch):
         """This is used in tune_wavegrad.py.
         It pads sequences to the max length."""
-        max_mel_length = max([b[0].shape[1] for b in batch]) if len(batch) > 1 else batch[0][0].shape[1]
-        max_audio_length = max([b[1].shape[0] for b in batch]) if len(batch) > 1 else batch[0][1].shape[0]
+        max_mel_length = (
+            max(b[0].shape[1] for b in batch)
+            if len(batch) > 1
+            else batch[0][0].shape[1]
+        )
+
+        max_audio_length = (
+            max(b[1].shape[0] for b in batch)
+            if len(batch) > 1
+            else batch[0][1].shape[0]
+        )
+
 
         mels = torch.zeros([len(batch), batch[0][0].shape[0], max_mel_length])
         audios = torch.zeros([len(batch), max_audio_length])

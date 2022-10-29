@@ -27,7 +27,12 @@ class ResidualStack(nn.Module):
             ]
 
         self.shortcuts = nn.ModuleList(
-            [weight_norm(nn.Conv1d(channels, channels, kernel_size=1, bias=True)) for i in range(num_res_blocks)]
+            [
+                weight_norm(
+                    nn.Conv1d(channels, channels, kernel_size=1, bias=True)
+                )
+                for _ in range(num_res_blocks)
+            ]
         )
 
     def forward(self, x):

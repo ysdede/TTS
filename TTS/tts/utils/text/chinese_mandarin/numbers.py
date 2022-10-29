@@ -28,7 +28,7 @@ def _num2chinese(num: str, big=False, simp=True, o=False, twoalt=False) -> str:
     """
 
     # check num first
-    nd = str(num)
+    nd = num
     if abs(float(nd)) >= 1e48:
         raise ValueError("number out of range")
     if "e" in nd:
@@ -49,7 +49,7 @@ def _num2chinese(num: str, big=False, simp=True, o=False, twoalt=False) -> str:
             c_twoalt = "二"
     c_unit2 = "万亿兆京垓秭穰沟涧正载" if simp else "萬億兆京垓秭穰溝澗正載"
     revuniq = lambda l: "".join(k for k, g in itertools.groupby(reversed(l)))
-    nd = str(num)
+    nd = num
     result = []
     if nd[0] == "+":
         result.append(c_symbol[0])
@@ -96,8 +96,7 @@ def _num2chinese(num: str, big=False, simp=True, o=False, twoalt=False) -> str:
     else:
         result.append(c_basic[0])
     if remainder:
-        result.append(c_symbol[2])
-        result.append("".join(c_basic[int(ch)] for ch in remainder))
+        result.extend((c_symbol[2], "".join(c_basic[int(ch)] for ch in remainder)))
     return "".join(result)
 
 
@@ -123,5 +122,4 @@ def replace_numbers_to_characters_in_text(text: str) -> str:
     Returns:
         str: output text
     """
-    text = re.sub(r"[0-9]+", _number_replace, text)
-    return text
+    return re.sub(r"[0-9]+", _number_replace, text)

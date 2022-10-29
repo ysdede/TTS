@@ -107,9 +107,7 @@ def _set_file_path(path):
     fs = fsspec.get_mapper(path).fs
     if fs.exists(path_restore):
         return path_restore
-    if fs.exists(path_continue):
-        return path_continue
-    return None
+    return path_continue if fs.exists(path_continue) else None
 
 
 def get_language_balancer_weights(items: list):

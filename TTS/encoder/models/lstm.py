@@ -52,8 +52,11 @@ class LSTMSpeakerEncoder(BaseEncoder):
         # choise LSTM layer
         if use_lstm_with_projection:
             layers.append(LSTMWithProjection(input_dim, lstm_dim, proj_dim))
-            for _ in range(num_lstm_layers - 1):
-                layers.append(LSTMWithProjection(proj_dim, lstm_dim, proj_dim))
+            layers.extend(
+                LSTMWithProjection(proj_dim, lstm_dim, proj_dim)
+                for _ in range(num_lstm_layers - 1)
+            )
+
             self.layers = nn.Sequential(*layers)
         else:
             self.layers = LSTMWithoutProjection(input_dim, lstm_dim, proj_dim, num_lstm_layers)

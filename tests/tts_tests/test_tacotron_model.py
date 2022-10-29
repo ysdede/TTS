@@ -55,12 +55,10 @@ class TacotronTrainTest(unittest.TestCase):
         criterion_st = nn.BCEWithLogitsLoss().to(device)
         model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
         model.train()
-        print(" > Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for Tacotron model:{count_parameters(model)}")
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
         for _ in range(5):
             outputs = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths)
@@ -70,15 +68,12 @@ class TacotronTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
             # if count not in [145, 59]:
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class MultiSpeakeTacotronTrainTest(unittest.TestCase):
@@ -109,12 +104,10 @@ class MultiSpeakeTacotronTrainTest(unittest.TestCase):
         config.d_vector_dim = 55
         model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
         model.train()
-        print(" > Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for Tacotron model:{count_parameters(model)}")
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
         for _ in range(5):
             outputs = model.forward(
@@ -126,15 +119,12 @@ class MultiSpeakeTacotronTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
             # if count not in [145, 59]:
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class TacotronGSTTrainTest(unittest.TestCase):
@@ -169,12 +159,10 @@ class TacotronGSTTrainTest(unittest.TestCase):
         model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
         model.train()
         # print(model)
-        print(" > Num parameters for Tacotron GST model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for Tacotron GST model:{count_parameters(model)}")
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
         for _ in range(10):
             outputs = model.forward(
@@ -186,14 +174,11 @@ class TacotronGSTTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
         # with file gst style
         mel_spec = (
@@ -221,12 +206,10 @@ class TacotronGSTTrainTest(unittest.TestCase):
         model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
         model.train()
         # print(model)
-        print(" > Num parameters for Tacotron GST model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for Tacotron GST model:{count_parameters(model)}")
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
         for _ in range(10):
             outputs = model.forward(
@@ -238,14 +221,11 @@ class TacotronGSTTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], linear_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class TacotronCapacitronTrainTest(unittest.TestCase):
@@ -293,12 +273,13 @@ class TacotronCapacitronTrainTest(unittest.TestCase):
         criterion = model.get_criterion()
         optimizer = model.get_optimizer()
         model.train()
-        print(" > Num parameters for Tacotron with Capacitron VAE model:%s" % (count_parameters(model)))
+        print(
+            f" > Num parameters for Tacotron with Capacitron VAE model:{count_parameters(model)}"
+        )
+
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         for _ in range(10):
             _, loss_dict = model.train_step(batch, criterion)
             optimizer.zero_grad()
@@ -306,14 +287,11 @@ class TacotronCapacitronTrainTest(unittest.TestCase):
             optimizer.first_step()
             loss_dict["loss"].backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
@@ -346,7 +324,7 @@ class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
         config.d_vector_dim = 55
         model = Tacotron(config).to(device)  # FIXME: missing num_speakers parameter to Tacotron ctor
         model.train()
-        print(" > Num parameters for Tacotron model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for Tacotron model:{count_parameters(model)}")
         model_ref = copy.deepcopy(model)
         count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
@@ -371,7 +349,8 @@ class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
             name, param = name_param
             if name == "gst_layer.encoder.recurrence.weight_hh_l0":
                 continue
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
+
             count += 1

@@ -19,8 +19,7 @@ class TrainArgs(TrainerArgs):
 
 def getarguments():
     train_config = TrainArgs()
-    parser = train_config.init_argparse(arg_prefix="")
-    return parser
+    return train_config.init_argparse(arg_prefix="")
 
 
 def process_args(args, config=None):
@@ -87,8 +86,7 @@ def process_args(args, config=None):
 
 def init_arguments():
     train_config = TrainArgs()
-    parser = train_config.init_argparse(arg_prefix="")
-    return parser
+    return train_config.init_argparse(arg_prefix="")
 
 
 def init_training(config: Coqpit = None):

@@ -23,8 +23,8 @@ def preprocess_wav_files(out_path: str, config: Coqpit, ap: AudioProcessor):
     wav_files = find_wav_files(config.data_path)
     for path in tqdm(wav_files):
         wav_name = Path(path).stem
-        quant_path = os.path.join(out_path, "quant", wav_name + ".npy")
-        mel_path = os.path.join(out_path, "mel", wav_name + ".npy")
+        quant_path = os.path.join(out_path, "quant", f"{wav_name}.npy")
+        mel_path = os.path.join(out_path, "mel", f"{wav_name}.npy")
         y = ap.load_wav(path)
         mel = ap.melspectrogram(y)
         np.save(mel_path, mel)
@@ -34,13 +34,13 @@ def preprocess_wav_files(out_path: str, config: Coqpit, ap: AudioProcessor):
 
 
 def find_wav_files(data_path, file_ext="wav"):
-    wav_paths = glob.glob(os.path.join(data_path, "**", f"*.{file_ext}"), recursive=True)
-    return wav_paths
+    return glob.glob(
+        os.path.join(data_path, "**", f"*.{file_ext}"), recursive=True
+    )
 
 
 def find_feat_files(data_path):
-    feat_paths = glob.glob(os.path.join(data_path, "**", "*.npy"), recursive=True)
-    return feat_paths
+    return glob.glob(os.path.join(data_path, "**", "*.npy"), recursive=True)
 
 
 def load_wav_data(data_path, eval_split_size, file_ext="wav"):

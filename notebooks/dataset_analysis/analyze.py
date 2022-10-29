@@ -58,13 +58,11 @@ def process_meta_data(path):
                     "utt": utt,
                     "frames": frames,
                     "audio_len": audio_len,
-                    "row": "{}|{}|{}|{}".format(row[0], row[1], row[2], row[3]),
+                    "row": f"{row[0]}|{row[1]}|{row[2]}|{utt}",
                 }
             )
 
-    meta_data = append_data_statistics(meta_data)
-
-    return meta_data
+    return append_data_statistics(meta_data)
 
 
 def get_data_points(meta_data):
@@ -88,9 +86,7 @@ def save_training(file_path, meta_data):
     rows = []
     for char_cnt in meta_data:
         data = meta_data[char_cnt]["data"]
-        for d in data:
-            rows.append(d["row"] + "\n")
-
+        rows.extend(d["row"] + "\n" for d in data)
     random.shuffle(rows)
     with open(file_path, "w+", encoding="utf-8") as f:
         for row in rows:
@@ -98,10 +94,7 @@ def save_training(file_path, meta_data):
 
 
 def plot(meta_data, save_path=None):
-    save = False
-    if save_path:
-        save = True
-
+    save = bool(save_path)
     graph_data = get_data_points(meta_data)
     x = graph_data["x"]
     y_avg = graph_data["y_avg"]
@@ -162,8 +155,7 @@ def plot_phonemes(train_path, cmu_dict_path, save_path):
         for row in data:
             words = row[3].split()
             for word in words:
-                pho = cmudict.lookup(word)
-                if pho:
+                if pho := cmudict.lookup(word):
                     indie = pho[0].split()
                     for nemes in indie:
                         if phonemes.get(nemes):

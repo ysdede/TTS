@@ -79,7 +79,7 @@ else:
     c_dataset.formatter = args.formatter_name
     c_dataset.dataset_name = args.dataset_name
     c_dataset.path = args.dataset_path
-    c_dataset.meta_file_train = args.metafile if args.metafile else None
+    c_dataset.meta_file_train = args.metafile or None
     meta_data_train, meta_data_eval = load_tts_samples(c_dataset, eval_split=not args.no_eval)
 
 
@@ -99,24 +99,21 @@ class_name_key = encoder_manager.encoder_config.class_name_key
 
 # compute speaker embeddings
 speaker_mapping = {}
-for idx, fields in enumerate(tqdm(samples)):
+for fields in tqdm(samples):
     class_name = fields[class_name_key]
     audio_file = fields["audio_file"]
     embedding_key = fields["audio_unique_name"]
     root_path = fields["root_path"]
 
-    if args.old_file is not None and embedding_key in encoder_manager.clip_ids:
-        # get the embedding from the old file
-        embedd = encoder_manager.get_embedding_by_clip(embedding_key)
-    else:
-        # extract the embedding
-        embedd = encoder_manager.compute_embedding_from_clip(audio_file)
+    embedd = (
+        encoder_manager.get_embedding_by_clip(embedding_key)
+        if args.old_file is not None
+        and embedding_key in encoder_manager.clip_ids
+        else encoder_manager.compute_embedding_from_clip(audio_file)
+    )
 
     # create speaker_mapping if target dataset is defined
-    speaker_mapping[embedding_key] = {}
-    speaker_mapping[embedding_key]["name"] = class_name
-    speaker_mapping[embedding_key]["embedding"] = embedd
-
+    speaker_mapping[embedding_key] = {"name": class_name, "embedding": embedd}
 if speaker_mapping:
     # save speaker_mapping if target dataset is defined
     if os.path.isdir(args.output_path):

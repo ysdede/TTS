@@ -36,9 +36,7 @@ class KO_KR_Phonemizer(BasePhonemizer):
 
     def _phonemize(self, text: str, separator: str = "", character: str = "hangeul") -> str:
         ph = korean_text_to_phonemes(text, character=character)
-        if separator is not None or separator != "":
-            return separator.join(ph)
-        return ph
+        return separator.join(ph) if separator is not None or separator != "" else ph
 
     def phonemize(self, text: str, separator: str = "", character: str = "hangeul") -> str:
         return self._phonemize(text, separator, character)

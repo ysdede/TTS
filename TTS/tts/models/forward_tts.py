@@ -279,8 +279,7 @@ class ForwardTTS(BaseTTS):
             y_lengths[y_lengths < 1] = 1
             y_mask = torch.unsqueeze(sequence_mask(y_lengths, None), 1).to(dr.dtype)
         attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
-        attn = generate_path(dr, attn_mask.squeeze(1)).to(dr.dtype)
-        return attn
+        return generate_path(dr, attn_mask.squeeze(1)).to(dr.dtype)
 
     def expand_encoder_outputs(self, en, dr, x_mask, y_mask):
         """Generate attention alignment map from durations and
@@ -490,8 +489,7 @@ class ForwardTTS(BaseTTS):
         if speaker_ids is not None and not hasattr(self, "emb_g"):
             raise ValueError("[!] Cannot use speaker-ids without enabling speaker embedding.")
 
-        g = speaker_ids if speaker_ids is not None else d_vectors
-        return g
+        return speaker_ids if speaker_ids is not None else d_vectors
 
     def forward(
         self,
@@ -559,7 +557,7 @@ class ForwardTTS(BaseTTS):
         o_de, attn = self._forward_decoder(
             o_en, dr, x_mask, y_lengths, g=None
         )  # TODO: maybe pass speaker embedding (g) too
-        outputs = {
+        return {
             "model_outputs": o_de,  # [B, T, C]
             "durations_log": o_dr_log.squeeze(1),  # [B, T]
             "durations": o_dr.squeeze(1),  # [B, T]
@@ -574,10 +572,9 @@ class ForwardTTS(BaseTTS):
             "x_mask": x_mask,
             "y_mask": y_mask,
         }
-        return outputs
 
     @torch.no_grad()
-    def inference(self, x, aux_input={"d_vectors": None, "speaker_ids": None}):  # pylint: disable=unused-argument
+    def inference(self, x, aux_input={"d_vectors": None, "speaker_ids": None}):    # pylint: disable=unused-argument
         """Model's inference pass.
 
         Args:
@@ -605,13 +602,12 @@ class ForwardTTS(BaseTTS):
             o_en = o_en + o_pitch_emb
         # decoder pass
         o_de, attn = self._forward_decoder(o_en, o_dr, x_mask, y_lengths, g=None)
-        outputs = {
+        return {
             "model_outputs": o_de,
             "alignments": attn,
             "pitch": o_pitch,
             "durations_log": o_dr_log,
         }
-        return outputs
 
     def train_step(self, batch: dict, criterion: nn.Module):
         text_input = batch["text_input"]
@@ -680,7 +676,7 @@ class ForwardTTS(BaseTTS):
                 "pitch_ground_truth": plot_avg_pitch(pitch_avg, chars, output_fig=False),
                 "pitch_avg_predicted": plot_avg_pitch(pitch_avg_hat, chars, output_fig=False),
             }
-            figures.update(pitch_figures)
+            figures |= pitch_figures
 
         # plot the attention mask computed from the predicted durations
         if "attn_durations" in outputs:

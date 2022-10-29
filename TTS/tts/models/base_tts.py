@@ -134,13 +134,16 @@ class BaseTTS(BaseTrainerModel):
 
         # get speaker  id/d_vector
         speaker_id, d_vector, language_id = None, None, None
-        if hasattr(self, "speaker_manager"):
-            if config.use_d_vector_file:
-                if speaker_name is None:
-                    d_vector = self.speaker_manager.get_random_embedding()
-                else:
-                    d_vector = self.speaker_manager.get_d_vector_by_name(speaker_name)
-            elif config.use_speaker_embedding:
+        if config.use_d_vector_file:
+            if hasattr(self, "speaker_manager"):
+                d_vector = (
+                    self.speaker_manager.get_random_embedding()
+                    if speaker_name is None
+                    else self.speaker_manager.get_d_vector_by_name(speaker_name)
+                )
+
+        elif config.use_speaker_embedding:
+            if hasattr(self, "speaker_manager"):
                 if speaker_name is None:
                     speaker_id = self.speaker_manager.get_random_id()
                 else:
@@ -283,75 +286,75 @@ class BaseTTS(BaseTrainerModel):
         rank: int = None,
     ) -> "DataLoader":
         if is_eval and not config.run_eval:
-            loader = None
+            return None
+        # setup multi-speaker attributes
+        if hasattr(self, "speaker_manager") and self.speaker_manager is not None:
+            if hasattr(config, "model_args"):
+                speaker_id_mapping = (
+                    self.speaker_manager.name_to_id if config.model_args.use_speaker_embedding else None
+                )
+                d_vector_mapping = self.speaker_manager.embeddings if config.model_args.use_d_vector_file else None
+                config.use_d_vector_file = config.model_args.use_d_vector_file
+            else:
+                speaker_id_mapping = self.speaker_manager.name_to_id if config.use_speaker_embedding else None
+                d_vector_mapping = self.speaker_manager.embeddings if config.use_d_vector_file else None
         else:
-            # setup multi-speaker attributes
-            if hasattr(self, "speaker_manager") and self.speaker_manager is not None:
-                if hasattr(config, "model_args"):
-                    speaker_id_mapping = (
-                        self.speaker_manager.name_to_id if config.model_args.use_speaker_embedding else None
-                    )
-                    d_vector_mapping = self.speaker_manager.embeddings if config.model_args.use_d_vector_file else None
-                    config.use_d_vector_file = config.model_args.use_d_vector_file
-                else:
-                    speaker_id_mapping = self.speaker_manager.name_to_id if config.use_speaker_embedding else None
-                    d_vector_mapping = self.speaker_manager.embeddings if config.use_d_vector_file else None
-            else:
-                speaker_id_mapping = None
-                d_vector_mapping = None
+            speaker_id_mapping = None
+            d_vector_mapping = None
 
-            # setup multi-lingual attributes
-            if hasattr(self, "language_manager") and self.language_manager is not None:
-                language_id_mapping = self.language_manager.name_to_id if self.args.use_language_embedding else None
-            else:
-                language_id_mapping = None
+        # setup multi-lingual attributes
+        if hasattr(self, "language_manager") and self.language_manager is not None:
+            language_id_mapping = self.language_manager.name_to_id if self.args.use_language_embedding else None
+        else:
+            language_id_mapping = None
 
-            # init dataloader
-            dataset = TTSDataset(
-                outputs_per_step=config.r if "r" in config else 1,
-                compute_linear_spec=config.model.lower() == "tacotron" or config.compute_linear_spec,
-                compute_f0=config.get("compute_f0", False),
-                f0_cache_path=config.get("f0_cache_path", None),
-                samples=samples,
-                ap=self.ap,
-                return_wav=config.return_wav if "return_wav" in config else False,
-                batch_group_size=0 if is_eval else config.batch_group_size * config.batch_size,
-                min_text_len=config.min_text_len,
-                max_text_len=config.max_text_len,
-                min_audio_len=config.min_audio_len,
-                max_audio_len=config.max_audio_len,
-                phoneme_cache_path=config.phoneme_cache_path,
-                precompute_num_workers=config.precompute_num_workers,
-                use_noise_augment=False if is_eval else config.use_noise_augment,
-                verbose=verbose,
-                speaker_id_mapping=speaker_id_mapping,
-                d_vector_mapping=d_vector_mapping if config.use_d_vector_file else None,
-                tokenizer=self.tokenizer,
-                start_by_longest=config.start_by_longest,
-                language_id_mapping=language_id_mapping,
-            )
+        # init dataloader
+        dataset = TTSDataset(
+            outputs_per_step=config.r if "r" in config else 1,
+            compute_linear_spec=config.model.lower() == "tacotron" or config.compute_linear_spec,
+            compute_f0=config.get("compute_f0", False),
+            f0_cache_path=config.get("f0_cache_path", None),
+            samples=samples,
+            ap=self.ap,
+            return_wav=config.return_wav if "return_wav" in config else False,
+            batch_group_size=0 if is_eval else config.batch_group_size * config.batch_size,
+            min_text_len=config.min_text_len,
+            max_text_len=config.max_text_len,
+            min_audio_len=config.min_audio_len,
+            max_audio_len=config.max_audio_len,
+            phoneme_cache_path=config.phoneme_cache_path,
+            precompute_num_workers=config.precompute_num_workers,
+            use_noise_augment=False if is_eval else config.use_noise_augment,
+            verbose=verbose,
+            speaker_id_mapping=speaker_id_mapping,
+            d_vector_mapping=d_vector_mapping if config.use_d_vector_file else None,
+            tokenizer=self.tokenizer,
+            start_by_longest=config.start_by_longest,
+            language_id_mapping=language_id_mapping,
+        )
 
-            # wait all the DDP process to be ready
-            if num_gpus > 1:
-                dist.barrier()
+        # wait all the DDP process to be ready
+        if num_gpus > 1:
+            dist.barrier()
 
-            # sort input sequences from short to long
-            dataset.preprocess_samples()
+        # sort input sequences from short to long
+        dataset.preprocess_samples()
 
-            # get samplers
-            sampler = self.get_sampler(config, dataset, num_gpus)
+        # get samplers
+        sampler = self.get_sampler(config, dataset, num_gpus)
 
-            loader = DataLoader(
-                dataset,
-                batch_size=config.eval_batch_size if is_eval else config.batch_size,
-                shuffle=False,  # shuffle is done in the dataset.
-                collate_fn=dataset.collate_fn,
-                drop_last=False,  # setting this False might cause issues in AMP training.
-                sampler=sampler,
-                num_workers=config.num_eval_loader_workers if is_eval else config.num_loader_workers,
-                pin_memory=False,
-            )
-        return loader
+        return DataLoader(
+            dataset,
+            batch_size=config.eval_batch_size if is_eval else config.batch_size,
+            shuffle=False,  # shuffle is done in the dataset.
+            collate_fn=dataset.collate_fn,
+            drop_last=False,  # setting this False might cause issues in AMP training.
+            sampler=sampler,
+            num_workers=config.num_eval_loader_workers
+            if is_eval
+            else config.num_loader_workers,
+            pin_memory=False,
+        )
 
     def _get_test_aux_input(
         self,
@@ -362,14 +365,15 @@ class BaseTTS(BaseTrainerModel):
             d_vector = [self.speaker_manager.embeddings[name]["embedding"] for name in self.speaker_manager.embeddings]
             d_vector = (random.sample(sorted(d_vector), 1),)
 
-        aux_inputs = {
-            "speaker_id": None
-            if not self.config.use_speaker_embedding
-            else random.sample(sorted(self.speaker_manager.name_to_id.values()), 1),
+        return {
+            "speaker_id": random.sample(
+                sorted(self.speaker_manager.name_to_id.values()), 1
+            )
+            if self.config.use_speaker_embedding
+            else None,
             "d_vector": d_vector,
-            "style_wav": None,  # TODO: handle GST style input
+            "style_wav": None,
         }
-        return aux_inputs
 
     def test_run(self, assets: Dict) -> Tuple[Dict, Dict]:
         """Generic test run for `tts` models used by `Trainer`.
@@ -399,13 +403,15 @@ class BaseTTS(BaseTrainerModel):
                 use_griffin_lim=True,
                 do_trim_silence=False,
             )
-            test_audios["{}-audio".format(idx)] = outputs_dict["wav"]
-            test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+            test_audios[f"{idx}-audio"] = outputs_dict["wav"]
+            test_figures[f"{idx}-prediction"] = plot_spectrogram(
                 outputs_dict["outputs"]["model_outputs"], self.ap, output_fig=False
             )
-            test_figures["{}-alignment".format(idx)] = plot_alignment(
+
+            test_figures[f"{idx}-alignment"] = plot_alignment(
                 outputs_dict["outputs"]["alignments"], output_fig=False
             )
+
         return test_figures, test_audios
 
     def on_init_start(self, trainer):

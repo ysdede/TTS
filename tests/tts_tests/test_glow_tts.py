@@ -44,12 +44,10 @@ class TestGlowTTS(unittest.TestCase):
 
     @staticmethod
     def _check_parameter_changes(model, model_ref):
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
     def test_init_multispeaker(self):
         config = GlowTTSConfig(num_chars=32)
@@ -111,7 +109,7 @@ class TestGlowTTS(unittest.TestCase):
         config = GlowTTSConfig(num_chars=32)
         model = GlowTTS(config).to(device)
         model.train()
-        print(" > Num parameters for GlowTTS model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for GlowTTS model:{count_parameters(model)}")
         # inference encoder and decoder with MAS
         y = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths)
         self.assertEqual(y["z"].shape, mel_spec.shape)
@@ -138,7 +136,7 @@ class TestGlowTTS(unittest.TestCase):
         )
         model = GlowTTS.init_from_config(config, verbose=False).to(device)
         model.train()
-        print(" > Num parameters for GlowTTS model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for GlowTTS model:{count_parameters(model)}")
         # inference encoder and decoder with MAS
         y = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths, {"d_vectors": d_vector})
         self.assertEqual(y["z"].shape, mel_spec.shape)
@@ -164,7 +162,7 @@ class TestGlowTTS(unittest.TestCase):
         )
         model = GlowTTS.init_from_config(config, verbose=False).to(device)
         model.train()
-        print(" > Num parameters for GlowTTS model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for GlowTTS model:{count_parameters(model)}")
         # inference encoder and decoder with MAS
         y = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths, {"speaker_ids": speaker_ids})
         self.assertEqual(y["z"].shape, mel_spec.shape)
@@ -247,9 +245,7 @@ class TestGlowTTS(unittest.TestCase):
         y2 = model.decoder_inference(mel_spec, mel_lengths)
         assert (
             y2["model_outputs"].shape == y["model_outputs"].shape
-        ), "Difference between the shapes of the glowTTS inference with MAS ({}) and the inference using only the decoder ({}) !!".format(
-            y["model_outputs"].shape, y2["model_outputs"].shape
-        )
+        ), f'Difference between the shapes of the glowTTS inference with MAS ({y["model_outputs"].shape}) and the inference using only the decoder ({y2["model_outputs"].shape}) !!'
 
     def test_inference_with_MAS(self):
         self._test_inference_with_MAS(1)
@@ -265,13 +261,11 @@ class TestGlowTTS(unittest.TestCase):
         # reference model to compare model weights
         model_ref = GlowTTS(config).to(device)
         model.train()
-        print(" > Num parameters for GlowTTS model:%s" % (count_parameters(model)))
+        print(f" > Num parameters for GlowTTS model:{count_parameters(model)}")
         # pass the state to ref model
         model_ref.load_state_dict(copy.deepcopy(model.state_dict()))
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=0.001)
         for _ in range(5):
             optimizer.zero_grad()
@@ -295,13 +289,15 @@ class TestGlowTTS(unittest.TestCase):
     def test_train_eval_log(self):
         batch_size = BATCH_SIZE
         input_dummy, input_lengths, mel_spec, mel_lengths, _ = self._create_inputs(batch_size)
-        batch = {}
-        batch["text_input"] = input_dummy
-        batch["text_lengths"] = input_lengths
-        batch["mel_lengths"] = mel_lengths
-        batch["mel_input"] = mel_spec
-        batch["d_vectors"] = None
-        batch["speaker_ids"] = None
+        batch = {
+            "text_input": input_dummy,
+            "text_lengths": input_lengths,
+            "mel_lengths": mel_lengths,
+            "mel_input": mel_spec,
+            "d_vectors": None,
+            "speaker_ids": None,
+        }
+
         config = GlowTTSConfig(num_chars=32)
         model = GlowTTS.init_from_config(config, verbose=False).to(device)
         model.run_data_dep_init = False
@@ -328,8 +324,7 @@ class TestGlowTTS(unittest.TestCase):
         chkp_path = os.path.join(get_tests_output_path(), "dummy_glow_tts_checkpoint.pth")
         config = GlowTTSConfig(num_chars=32)
         model = GlowTTS.init_from_config(config, verbose=False).to(device)
-        chkp = {}
-        chkp["model"] = model.state_dict()
+        chkp = {"model": model.state_dict()}
         torch.save(chkp, chkp_path)
         model.load_checkpoint(config, chkp_path)
         self.assertTrue(model.training)

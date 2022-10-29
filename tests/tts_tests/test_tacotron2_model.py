@@ -52,12 +52,10 @@ class TacotronTrainTest(unittest.TestCase):
         model = Tacotron2(config).to(device)
         model.train()
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
-        for i in range(5):
+        for _ in range(5):
             outputs = model.forward(input_dummy, input_lengths, mel_spec, mel_lengths)
             assert torch.sigmoid(outputs["stop_tokens"]).data.max() <= 1.0
             assert torch.sigmoid(outputs["stop_tokens"]).data.min() >= 0.0
@@ -67,15 +65,12 @@ class TacotronTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
             # if count not in [145, 59]:
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class MultiSpeakerTacotronTrainTest(unittest.TestCase):
@@ -109,10 +104,8 @@ class MultiSpeakerTacotronTrainTest(unittest.TestCase):
         model = Tacotron2(config).to(device)
         model.train()
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
         for _ in range(5):
             outputs = model.forward(
@@ -126,15 +119,12 @@ class MultiSpeakerTacotronTrainTest(unittest.TestCase):
             loss = loss + criterion(outputs["model_outputs"], mel_postnet_spec, mel_lengths) + stop_loss
             loss.backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
             # if count not in [145, 59]:
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class TacotronGSTTrainTest(unittest.TestCase):
@@ -177,7 +167,7 @@ class TacotronGSTTrainTest(unittest.TestCase):
             assert (param - param_ref).sum() == 0, param
             count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
-        for i in range(10):
+        for _ in range(10):
             outputs = model.forward(
                 input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
             )
@@ -198,9 +188,10 @@ class TacotronGSTTrainTest(unittest.TestCase):
             if name == "gst_layer.encoder.recurrence.weight_hh_l0":
                 # print(param.grad)
                 continue
-            assert (param != param_ref).any(), "param {} {} with shape {} not updated!! \n{}\n{}".format(
-                name, count, param.shape, param, param_ref
-            )
+            assert (
+                param != param_ref
+            ).any(), f"param {name} {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
+
             count += 1
 
         # with file gst style
@@ -233,7 +224,7 @@ class TacotronGSTTrainTest(unittest.TestCase):
             assert (param - param_ref).sum() == 0, param
             count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
-        for i in range(10):
+        for _ in range(10):
             outputs = model.forward(
                 input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"speaker_ids": speaker_ids}
             )
@@ -254,9 +245,10 @@ class TacotronGSTTrainTest(unittest.TestCase):
             if name == "gst_layer.encoder.recurrence.weight_hh_l0":
                 # print(param.grad)
                 continue
-            assert (param != param_ref).any(), "param {} {} with shape {} not updated!! \n{}\n{}".format(
-                name, count, param.shape, param, param_ref
-            )
+            assert (
+                param != param_ref
+            ).any(), f"param {name} {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
+
             count += 1
 
 
@@ -306,10 +298,8 @@ class TacotronCapacitronTrainTest(unittest.TestCase):
 
         model.train()
         model_ref = copy.deepcopy(model)
-        count = 0
         for param, param_ref in zip(model.parameters(), model_ref.parameters()):
             assert (param - param_ref).sum() == 0, param
-            count += 1
         for _ in range(10):
             _, loss_dict = model.train_step(batch, criterion)
             optimizer.zero_grad()
@@ -317,14 +307,11 @@ class TacotronCapacitronTrainTest(unittest.TestCase):
             optimizer.first_step()
             loss_dict["loss"].backward()
             optimizer.step()
-        # check parameter changes
-        count = 0
-        for param, param_ref in zip(model.parameters(), model_ref.parameters()):
+        for count, (param, param_ref) in enumerate(zip(model.parameters(), model_ref.parameters())):
             # ignore pre-higway layer since it works conditional
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
-            count += 1
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
 
 
 class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
@@ -365,7 +352,7 @@ class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
             assert (param - param_ref).sum() == 0, param
             count += 1
         optimizer = optim.Adam(model.parameters(), lr=config.lr)
-        for i in range(5):
+        for _ in range(5):
             outputs = model.forward(
                 input_dummy, input_lengths, mel_spec, mel_lengths, aux_input={"d_vectors": speaker_embeddings}
             )
@@ -385,7 +372,8 @@ class SCGSTMultiSpeakeTacotronTrainTest(unittest.TestCase):
             name, param = name_param
             if name == "gst_layer.encoder.recurrence.weight_hh_l0":
                 continue
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                count, param.shape, param, param_ref
-            )
+            assert (
+                param != param_ref
+            ).any(), f"param {count} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
+
             count += 1

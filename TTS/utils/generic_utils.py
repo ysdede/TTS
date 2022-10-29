@@ -60,20 +60,17 @@ def get_experiment_folder_path(root_path, model_name):
     """Get an experiment folder path with the current date and time"""
     date_str = datetime.datetime.now().strftime("%B-%d-%Y_%I+%M%p")
     commit_hash = get_commit_hash()
-    output_folder = os.path.join(root_path, model_name + "-" + date_str + "-" + commit_hash)
-    return output_folder
+    return os.path.join(root_path, f"{model_name}-{date_str}-{commit_hash}")
 
 
 def remove_experiment_folder(experiment_path):
     """Check folder if there is a checkpoint, otherwise remove the folder"""
     fs = fsspec.get_mapper(experiment_path).fs
-    checkpoint_files = fs.glob(experiment_path + "/*.pth")
-    if not checkpoint_files:
-        if fs.exists(experiment_path):
-            fs.rm(experiment_path, recursive=True)
-            print(" ! Run is removed from {}".format(experiment_path))
-    else:
-        print(" ! Run is kept in {}".format(experiment_path))
+    if checkpoint_files := fs.glob(f"{experiment_path}/*.pth"):
+        print(f" ! Run is kept in {experiment_path}")
+    elif fs.exists(experiment_path):
+        fs.rm(experiment_path, recursive=True)
+        print(f" ! Run is removed from {experiment_path}")
 
 
 def count_parameters(model):
@@ -90,7 +87,7 @@ def to_camel(text):
 
 def find_module(module_path: str, module_name: str) -> object:
     module_name = module_name.lower()
-    module = importlib.import_module(module_path + "." + module_name)
+    module = importlib.import_module(f"{module_path}.{module_name}")
     class_name = to_camel(module_name)
     return getattr(module, class_name)
 
@@ -142,7 +139,7 @@ def set_init_dict(model_dict, checkpoint_state, c):
     # Partial initialization: if there is a mismatch with new and old layer, it is skipped.
     for k, v in checkpoint_state.items():
         if k not in model_dict:
-            print(" | > Layer missing in the model definition: {}".format(k))
+            print(f" | > Layer missing in the model definition: {k}")
     # 1. filter out unnecessary keys
     pretrained_dict = {k: v for k, v in checkpoint_state.items() if k in model_dict}
     # 2. filter out different size layers
@@ -153,7 +150,7 @@ def set_init_dict(model_dict, checkpoint_state, c):
             pretrained_dict = {k: v for k, v in pretrained_dict.items() if reinit_layer_name not in k}
     # 4. overwrite entries in the existing state dict
     model_dict.update(pretrained_dict)
-    print(" | > {} / {} layers are restored.".format(len(pretrained_dict), len(model_dict)))
+    print(f" | > {len(pretrained_dict)} / {len(model_dict)} layers are restored.")
     return model_dict
 
 
@@ -192,15 +189,13 @@ class KeepAverage:
         if name not in self.avg_values:
             # add value if not exist before
             self.add_value(name, init_val=value)
+        elif weighted_avg:
+            self.avg_values[name] = 0.99 * self.avg_values[name] + 0.01 * value
+            self.iters[name] += 1
         else:
-            # else update existing value
-            if weighted_avg:
-                self.avg_values[name] = 0.99 * self.avg_values[name] + 0.01 * value
-                self.iters[name] += 1
-            else:
-                self.avg_values[name] = self.avg_values[name] * self.iters[name] + value
-                self.iters[name] += 1
-                self.avg_values[name] /= self.iters[name]
+            self.avg_values[name] = self.avg_values[name] * self.iters[name] + value
+            self.iters[name] += 1
+            self.avg_values[name] /= self.iters[name]
 
     def add_values(self, name_dict):
         for key, value in name_dict.items():

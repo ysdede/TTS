@@ -132,8 +132,7 @@ def portuguese_cleaners(text):
 
 def chinese_mandarin_cleaners(text: str) -> str:
     """Basic pipeline for chinese"""
-    text = replace_numbers_to_characters_in_text(text)
-    return text
+    return replace_numbers_to_characters_in_text(text)
 
 
 def multilingual_cleaners(text):

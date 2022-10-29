@@ -59,15 +59,14 @@ class EncoderDataset(Dataset):
             print(f" | > Classes: {self.classes}")
 
     def load_wav(self, filename):
-        audio = self.ap.load_wav(filename, sr=self.ap.sample_rate)
-        return audio
+        return self.ap.load_wav(filename, sr=self.ap.sample_rate)
 
     def __parse_items(self):
         class_to_utters = {}
         for item in self.items:
             path_ = item["audio_file"]
             class_name = item[self.config.class_name_key]
-            if class_name in class_to_utters.keys():
+            if class_name in class_to_utters:
                 class_to_utters[class_name].append(path_)
             else:
                 class_to_utters[class_name] = [
@@ -77,9 +76,7 @@ class EncoderDataset(Dataset):
         # skip classes with number of samples >= self.num_utter_per_class
         class_to_utters = {k: v for (k, v) in class_to_utters.items() if len(v) >= self.num_utter_per_class}
 
-        classes = list(class_to_utters.keys())
-        classes.sort()
-
+        classes = sorted(class_to_utters.keys())
         new_items = []
         for item in self.items:
             path_ = item["audio_file"]
@@ -109,7 +106,7 @@ class EncoderDataset(Dataset):
         self.classname_to_classid = {key: i for i, key in enumerate(self.classes)}
 
     def get_map_classid_to_classname(self):
-        return dict((c_id, c_n) for c_n, c_id in self.classname_to_classid.items())
+        return {c_id: c_n for c_n, c_id in self.classname_to_classid.items()}
 
     def __getitem__(self, idx):
         return self.items[idx]
@@ -129,9 +126,12 @@ class EncoderDataset(Dataset):
             offset = random.randint(0, wav.shape[0] - self.seq_len)
             wav = wav[offset : offset + self.seq_len]
 
-            if self.augmentator is not None and self.data_augmentation_p:
-                if random.random() < self.data_augmentation_p:
-                    wav = self.augmentator.apply_one(wav)
+            if (
+                self.augmentator is not None
+                and self.data_augmentation_p
+                and random.random() < self.data_augmentation_p
+            ):
+                wav = self.augmentator.apply_one(wav)
 
             if not self.use_torch_spec:
                 mel = self.ap.melspectrogram(wav)

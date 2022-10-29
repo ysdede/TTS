@@ -15,7 +15,7 @@ def setup_model(config: Coqpit):
         MyModel = importlib.import_module("TTS.vocoder.models.gan")
         MyModel = getattr(MyModel, "GAN")
     else:
-        MyModel = importlib.import_module("TTS.vocoder.models." + config.model.lower())
+        MyModel = importlib.import_module(f"TTS.vocoder.models.{config.model.lower()}")
         if config.model.lower() == "wavernn":
             MyModel = getattr(MyModel, "Wavernn")
         elif config.model.lower() == "gan":
@@ -27,14 +27,17 @@ def setup_model(config: Coqpit):
                 MyModel = getattr(MyModel, to_camel(config.model))
             except ModuleNotFoundError as e:
                 raise ValueError(f"Model {config.model} not exist!") from e
-    print(" > Vocoder Model: {}".format(config.model))
+    print(f" > Vocoder Model: {config.model}")
     return MyModel.init_from_config(config)
 
 
 def setup_generator(c):
     """TODO: use config object as arguments"""
-    print(" > Generator Model: {}".format(c.generator_model))
-    MyModel = importlib.import_module("TTS.vocoder.models." + c.generator_model.lower())
+    print(f" > Generator Model: {c.generator_model}")
+    MyModel = importlib.import_module(
+        f"TTS.vocoder.models.{c.generator_model.lower()}"
+    )
+
     MyModel = getattr(MyModel, to_camel(c.generator_model))
     # this is to preserve the Wavernn class name (instead of Wavernn)
     if c.generator_model.lower() in "hifigan_generator":
@@ -96,11 +99,14 @@ def setup_generator(c):
 
 def setup_discriminator(c):
     """TODO: use config objekt as arguments"""
-    print(" > Discriminator Model: {}".format(c.discriminator_model))
+    print(f" > Discriminator Model: {c.discriminator_model}")
     if "parallel_wavegan" in c.discriminator_model:
         MyModel = importlib.import_module("TTS.vocoder.models.parallel_wavegan_discriminator")
     else:
-        MyModel = importlib.import_module("TTS.vocoder.models." + c.discriminator_model.lower())
+        MyModel = importlib.import_module(
+            f"TTS.vocoder.models.{c.discriminator_model.lower()}"
+        )
+
     MyModel = getattr(MyModel, to_camel(c.discriminator_model.lower()))
     if c.discriminator_model in "hifigan_discriminator":
         model = MyModel()

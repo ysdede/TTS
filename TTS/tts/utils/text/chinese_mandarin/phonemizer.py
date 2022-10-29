@@ -8,8 +8,7 @@ from .pinyinToPhonemes import PINYIN_DICT
 
 def _chinese_character_to_pinyin(text: str) -> List[str]:
     pinyins = pypinyin.pinyin(text, style=pypinyin.Style.TONE3, heteronym=False, neutral_tone_with_five=True)
-    pinyins_flat_list = [item for sublist in pinyins for item in sublist]
-    return pinyins_flat_list
+    return [item for sublist in pinyins for item in sublist]
 
 
 def _chinese_pinyin_to_phoneme(pinyin: str) -> str:

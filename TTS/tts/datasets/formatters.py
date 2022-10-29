@@ -107,11 +107,7 @@ def mailabs(root_path, meta_files=None, ignored_speakers=None):
             recursively. Defaults to None
     """
     speaker_regex = re.compile("by_book/(male|female)/(?P<speaker_name>[^/]+)/")
-    if not meta_files:
-        csv_files = glob(root_path + "/**/metadata.csv", recursive=True)
-    else:
-        csv_files = meta_files
-
+    csv_files = meta_files or glob(root_path + "/**/metadata.csv", recursive=True)
     # meta_files = [f.strip() for f in meta_files.split(",")]
     items = []
     for csv_file in csv_files:
@@ -125,19 +121,28 @@ def mailabs(root_path, meta_files=None, ignored_speakers=None):
         speaker_name_match = speaker_regex.search(txt_file)
         if speaker_name_match is None:
             continue
-        speaker_name = speaker_name_match.group("speaker_name")
+        speaker_name = speaker_name_match["speaker_name"]
         # ignore speakers
-        if isinstance(ignored_speakers, list):
-            if speaker_name in ignored_speakers:
-                continue
-        print(" | > {}".format(csv_file))
+        if (
+            isinstance(ignored_speakers, list)
+            and speaker_name in ignored_speakers
+        ):
+            continue
+        print(f" | > {csv_file}")
         with open(txt_file, "r", encoding="utf-8") as ttf:
             for line in ttf:
                 cols = line.split("|")
-                if not meta_files:
-                    wav_file = os.path.join(folder, "wavs", cols[0] + ".wav")
-                else:
-                    wav_file = os.path.join(root_path, folder.replace("metadata.csv", ""), "wavs", cols[0] + ".wav")
+                wav_file = (
+                    os.path.join(
+                        root_path,
+                        folder.replace("metadata.csv", ""),
+                        "wavs",
+                        cols[0] + ".wav",
+                    )
+                    if meta_files
+                    else os.path.join(folder, "wavs", cols[0] + ".wav")
+                )
+
                 if os.path.isfile(wav_file):
                     text = cols[1].strip()
                     items.append(
@@ -145,7 +150,7 @@ def mailabs(root_path, meta_files=None, ignored_speakers=None):
                     )
                 else:
                     # M-AI-Labs have some missing samples, so just print the warning
-                    print("> File %s does not exist!" % (wav_file))
+                    print(f"> File {wav_file} does not exist!")
     return items
 
 
@@ -271,9 +276,11 @@ def common_voice(root_path, meta_file, ignored_speakers=None):
             text = cols[2]
             speaker_name = cols[0]
             # ignore speakers
-            if isinstance(ignored_speakers, list):
-                if speaker_name in ignored_speakers:
-                    continue
+            if (
+                isinstance(ignored_speakers, list)
+                and speaker_name in ignored_speakers
+            ):
+                continue
             wav_file = os.path.join(root_path, "clips", cols[1].replace(".mp3", ".wav"))
             items.append(
                 {"text": text, "audio_file": wav_file, "speaker_name": "MCV_" + speaker_name, "root_path": root_path}
@@ -286,9 +293,8 @@ def libri_tts(root_path, meta_files=None, ignored_speakers=None):
     items = []
     if not meta_files:
         meta_files = glob(f"{root_path}/**/*trans.tsv", recursive=True)
-    else:
-        if isinstance(meta_files, str):
-            meta_files = [os.path.join(root_path, meta_files)]
+    elif isinstance(meta_files, str):
+        meta_files = [os.path.join(root_path, meta_files)]
 
     for meta_file in meta_files:
         _meta_file = os.path.basename(meta_file).split(".")[0]
@@ -299,11 +305,12 @@ def libri_tts(root_path, meta_files=None, ignored_speakers=None):
                 speaker_name, chapter_id, *_ = cols[0].split("_")
                 _root_path = os.path.join(root_path, f"{speaker_name}/{chapter_id}")
                 wav_file = os.path.join(_root_path, file_name + ".wav")
+                if (
+                    isinstance(ignored_speakers, list)
+                    and speaker_name in ignored_speakers
+                ):
+                    continue
                 text = cols[2]
-                # ignore speakers
-                if isinstance(ignored_speakers, list):
-                    if speaker_name in ignored_speakers:
-                        continue
                 items.append(
                     {
                         "text": text,
@@ -346,12 +353,13 @@ def brspeech(root_path, meta_file, ignored_speakers=None):
                 continue
             cols = line.split("|")
             wav_file = os.path.join(root_path, cols[0])
-            text = cols[2]
             speaker_id = cols[3]
-            # ignore speakers
-            if isinstance(ignored_speakers, list):
-                if speaker_id in ignored_speakers:
-                    continue
+            if (
+                isinstance(ignored_speakers, list)
+                and speaker_id in ignored_speakers
+            ):
+                continue
+            text = cols[2]
             items.append({"text": text, "audio_file": wav_file, "speaker_name": speaker_id, "root_path": root_path})
     return items
 
@@ -384,9 +392,11 @@ def vctk(root_path, meta_files=None, wavs_path="wav48_silence_trimmed", mic="mic
         _, speaker_id, txt_file = os.path.relpath(meta_file, root_path).split(os.sep)
         file_id = txt_file.split(".")[0]
         # ignore speakers
-        if isinstance(ignored_speakers, list):
-            if speaker_id in ignored_speakers:
-                continue
+        if (
+            isinstance(ignored_speakers, list)
+            and speaker_id in ignored_speakers
+        ):
+            continue
         with open(meta_file, "r", encoding="utf-8") as file_text:
             text = file_text.readlines()[0]
         # p280 has no mic2 recordings
@@ -411,9 +421,11 @@ def vctk_old(root_path, meta_files=None, wavs_path="wav48", ignored_speakers=Non
         _, speaker_id, txt_file = os.path.relpath(meta_file, root_path).split(os.sep)
         file_id = txt_file.split(".")[0]
         # ignore speakers
-        if isinstance(ignored_speakers, list):
-            if speaker_id in ignored_speakers:
-                continue
+        if (
+            isinstance(ignored_speakers, list)
+            and speaker_id in ignored_speakers
+        ):
+            continue
         with open(meta_file, "r", encoding="utf-8") as file_text:
             text = file_text.readlines()[0]
         wav_file = os.path.join(root_path, wavs_path, speaker_id, file_id + ".wav")
@@ -451,9 +463,11 @@ def open_bible(root_path, meta_files="train", ignore_digits_sentences=True, igno
         _, speaker_id, txt_file = os.path.relpath(meta_file, root_path).split(os.sep)
         file_id = txt_file.split(".")[0]
         # ignore speakers
-        if isinstance(ignored_speakers, list):
-            if speaker_id in ignored_speakers:
-                continue
+        if (
+            isinstance(ignored_speakers, list)
+            and speaker_id in ignored_speakers
+        ):
+            continue
         with open(meta_file, "r", encoding="utf-8") as file_text:
             text = file_text.readline().replace("\n", "")
         # ignore sentences that contains digits
@@ -474,9 +488,11 @@ def mls(root_path, meta_files=None, ignored_speakers=None):
             speaker, book, *_ = file.split("_")
             wav_file = os.path.join(root_path, os.path.dirname(meta_files), "audio", speaker, book, file + ".wav")
             # ignore speakers
-            if isinstance(ignored_speakers, list):
-                if speaker in ignored_speakers:
-                    continue
+            if (
+                isinstance(ignored_speakers, list)
+                and speaker in ignored_speakers
+            ):
+                continue
             items.append(
                 {"text": text, "audio_file": wav_file, "speaker_name": "MLS_" + speaker, "root_path": root_path}
             )
@@ -546,9 +562,11 @@ def emotion(root_path, meta_file, ignored_speakers=None):
             speaker_id = cols[1]
             emotion_id = cols[2].replace("\n", "")
             # ignore speakers
-            if isinstance(ignored_speakers, list):
-                if speaker_id in ignored_speakers:
-                    continue
+            if (
+                isinstance(ignored_speakers, list)
+                and speaker_id in ignored_speakers
+            ):
+                continue
             items.append(
                 {"audio_file": wav_file, "speaker_name": speaker_id, "emotion_name": emotion_id, "root_path": root_path}
             )

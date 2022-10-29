@@ -31,23 +31,22 @@ class BaseVocoder(BaseTrainerModel):
         If the config is for the model with a name like "*Args", then we assign the directly.
         """
         # don't use isintance not to import recursively
-        if "Config" in config.__class__.__name__:
-            if "characters" in config:
-                _, self.config, num_chars = self.get_characters(config)
-                self.config.num_chars = num_chars
-                if hasattr(self.config, "model_args"):
-                    config.model_args.num_chars = num_chars
-                    if "model_args" in config:
-                        self.args = self.config.model_args
-                    # This is for backward compatibility
-                    if "model_params" in config:
-                        self.args = self.config.model_params
-            else:
-                self.config = config
+        if "Config" not in config.__class__.__name__:
+            raise ValueError("config must be either a *Config or *Args")
+        if "characters" in config:
+            _, self.config, num_chars = self.get_characters(config)
+            self.config.num_chars = num_chars
+            if hasattr(self.config, "model_args"):
+                config.model_args.num_chars = num_chars
                 if "model_args" in config:
                     self.args = self.config.model_args
                 # This is for backward compatibility
                 if "model_params" in config:
                     self.args = self.config.model_params
         else:
-            raise ValueError("config must be either a *Config or *Args")
+            self.config = config
+            if "model_args" in config:
+                self.args = self.config.model_args
+            # This is for backward compatibility
+            if "model_params" in config:
+                self.args = self.config.model_params

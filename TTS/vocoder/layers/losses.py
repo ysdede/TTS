@@ -80,9 +80,7 @@ class L1SpecLoss(nn.Module):
     def forward(self, y_hat, y):
         y_hat_M = self.stft(y_hat)
         y_M = self.stft(y)
-        # magnitude loss
-        loss_mag = F.l1_loss(torch.log(y_M), torch.log(y_hat_M))
-        return loss_mag
+        return F.l1_loss(torch.log(y_M), torch.log(y_hat_M))
 
 
 class MultiScaleSubbandSTFTLoss(MultiScaleSTFTLoss):
@@ -101,8 +99,7 @@ class MSEGLoss(nn.Module):
 
     # pylint: disable=no-self-use
     def forward(self, score_real):
-        loss_fake = F.mse_loss(score_real, score_real.new_ones(score_real.shape))
-        return loss_fake
+        return F.mse_loss(score_real, score_real.new_ones(score_real.shape))
 
 
 class HingeGLoss(nn.Module):
@@ -110,9 +107,7 @@ class HingeGLoss(nn.Module):
 
     # pylint: disable=no-self-use
     def forward(self, score_real):
-        # TODO: this might be wrong
-        loss_fake = torch.mean(F.relu(1.0 - score_real))
-        return loss_fake
+        return torch.mean(F.relu(1.0 - score_real))
 
 
 ##################################
@@ -270,38 +265,41 @@ class GeneratorLoss(nn.Module):
             stft_loss_mg, stft_loss_sc = self.stft_loss(y_hat[:, :, : y.size(2)].squeeze(1), y.squeeze(1))
             return_dict["G_stft_loss_mg"] = stft_loss_mg
             return_dict["G_stft_loss_sc"] = stft_loss_sc
-            gen_loss = gen_loss + self.stft_loss_weight * (stft_loss_mg + stft_loss_sc)
+            gen_loss += self.stft_loss_weight * (stft_loss_mg + stft_loss_sc)
 
         # L1 Spec loss
         if self.use_l1_spec_loss:
             l1_spec_loss = self.l1_spec_loss(y_hat, y)
             return_dict["G_l1_spec_loss"] = l1_spec_loss
-            gen_loss = gen_loss + self.l1_spec_loss_weight * l1_spec_loss
+            gen_loss += self.l1_spec_loss_weight * l1_spec_loss
 
         # subband STFT Loss
         if self.use_subband_stft_loss:
             subband_stft_loss_mg, subband_stft_loss_sc = self.subband_stft_loss(y_hat_sub, y_sub)
             return_dict["G_subband_stft_loss_mg"] = subband_stft_loss_mg
             return_dict["G_subband_stft_loss_sc"] = subband_stft_loss_sc
-            gen_loss = gen_loss + self.subband_stft_loss_weight * (subband_stft_loss_mg + subband_stft_loss_sc)
+            gen_loss += self.subband_stft_loss_weight * (
+                subband_stft_loss_mg + subband_stft_loss_sc
+            )
+
 
         # multiscale MSE adversarial loss
         if self.use_mse_gan_loss and scores_fake is not None:
             mse_fake_loss = _apply_G_adv_loss(scores_fake, self.mse_loss)
             return_dict["G_mse_fake_loss"] = mse_fake_loss
-            adv_loss = adv_loss + self.mse_gan_loss_weight * mse_fake_loss
+            adv_loss += self.mse_gan_loss_weight * mse_fake_loss
 
         # multiscale Hinge adversarial loss
-        if self.use_hinge_gan_loss and not scores_fake is not None:
+        if self.use_hinge_gan_loss and scores_fake is None:
             hinge_fake_loss = _apply_G_adv_loss(scores_fake, self.hinge_loss)
             return_dict["G_hinge_fake_loss"] = hinge_fake_loss
-            adv_loss = adv_loss + self.hinge_gan_loss_weight * hinge_fake_loss
+            adv_loss += self.hinge_gan_loss_weight * hinge_fake_loss
 
         # Feature Matching Loss
-        if self.use_feat_match_loss and not feats_fake is None:
+        if self.use_feat_match_loss and feats_fake is not None:
             feat_match_loss = self.feat_match_loss(feats_fake, feats_real)
             return_dict["G_feat_match_loss"] = feat_match_loss
-            adv_loss = adv_loss + self.feat_match_loss_weight * feat_match_loss
+            adv_loss += self.feat_match_loss_weight * feat_match_loss
         return_dict["loss"] = gen_loss + adv_loss
         return_dict["G_gen_loss"] = gen_loss
         return_dict["G_adv_loss"] = adv_loss

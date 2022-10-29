@@ -77,7 +77,7 @@ class MelganGenerator(nn.Module):
         return self.layers(c)
 
     def remove_weight_norm(self):
-        for _, layer in enumerate(self.layers):
+        for layer in self.layers:
             if len(layer.state_dict()) != 0:
                 try:
                     nn.utils.remove_weight_norm(layer)

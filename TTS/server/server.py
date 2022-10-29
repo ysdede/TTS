@@ -136,8 +136,7 @@ def style_wav_uri_to_dict(style_wav: str) -> Union[str, dict]:
         if os.path.isfile(style_wav) and style_wav.endswith(".wav"):
             return style_wav  # style_wav is a .wav file located on the server
 
-        style_wav = json.loads(style_wav)
-        return style_wav  # style_wav is a gst dictionary with {token1_id : token1_weigth, ...}
+        return json.loads(style_wav)
     return None
 
 
@@ -179,8 +178,8 @@ def tts():
         speaker_idx = request.args.get("speaker_id", "")
         style_wav = request.args.get("style_wav", "")
         style_wav = style_wav_uri_to_dict(style_wav)
-        print(" > Model input: {}".format(text))
-        print(" > Speaker Idx: {}".format(speaker_idx))
+        print(f" > Model input: {text}")
+        print(f" > Speaker Idx: {speaker_idx}")
         wavs = synthesizer.tts(text, speaker_name=speaker_idx, style_wav=style_wav)
         out = io.BytesIO()
         synthesizer.save_wav(wavs, out)

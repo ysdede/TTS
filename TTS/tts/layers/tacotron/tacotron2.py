@@ -213,8 +213,9 @@ class Decoder(nn.Module):
 
     def get_go_frame(self, inputs):
         B = inputs.size(0)
-        memory = torch.zeros(1, device=inputs.device).repeat(B, self.frame_channels * self.r)
-        return memory
+        return torch.zeros(1, device=inputs.device).repeat(
+            B, self.frame_channels * self.r
+        )
 
     def _init_states(self, inputs, mask, keep_states=False):
         B = inputs.size(0)

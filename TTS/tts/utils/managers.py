@@ -102,8 +102,7 @@ class BaseIDManager:
             Tuple[Dict]: speaker IDs.
         """
         classes = sorted({item[parse_key] for item in items})
-        ids = {name: i for i, name in enumerate(classes)}
-        return ids
+        return {name: i for i, name in enumerate(classes)}
 
 
 class EmbeddingManager(BaseIDManager):
@@ -193,14 +192,14 @@ class EmbeddingManager(BaseIDManager):
         embeddings = load_file(file_path)
         speakers = sorted({x["name"] for x in embeddings.values()})
         name_to_id = {name: i for i, name in enumerate(speakers)}
-        clip_ids = list(set(sorted(clip_name for clip_name in embeddings.keys())))
+        clip_ids = list(set(sorted(iter(embeddings.keys()))))
         # cache embeddings_by_names for fast inference using a bigger speakers.json
         embeddings_by_names = {}
         for x in embeddings.values():
-            if x["name"] not in embeddings_by_names.keys():
-                embeddings_by_names[x["name"]] = [x["embedding"]]
-            else:
+            if x["name"] in embeddings_by_names:
                 embeddings_by_names[x["name"]].append(x["embedding"])
+            else:
+                embeddings_by_names[x["name"]] = [x["embedding"]]
         return name_to_id, clip_ids, embeddings, embeddings_by_names
 
     def load_embeddings_from_file(self, file_path: str) -> None:
@@ -225,9 +224,7 @@ class EmbeddingManager(BaseIDManager):
         self.embeddings = {}
         for file_path in file_paths:
             ids, clip_ids, embeddings, embeddings_by_names = self.read_embeddings_from_file(file_path)
-            # check colliding keys
-            duplicates = set(self.embeddings.keys()) & set(embeddings.keys())
-            if duplicates:
+            if duplicates := set(self.embeddings.keys()) & set(embeddings.keys()):
                 raise ValueError(f" [!] Duplicate embedding names <{duplicates}> in {file_path}")
             # store values
             self.name_to_id.update(ids)
@@ -265,10 +262,10 @@ class EmbeddingManager(BaseIDManager):
         """
         embeddings_by_names = {}
         for x in self.embeddings.values():
-            if x["name"] not in embeddings_by_names.keys():
-                embeddings_by_names[x["name"]] = [x["embedding"]]
-            else:
+            if x["name"] in embeddings_by_names:
                 embeddings_by_names[x["name"]].append(x["embedding"])
+            else:
+                embeddings_by_names[x["name"]] = [x["embedding"]]
         return embeddings_by_names
 
     def get_mean_embedding(self, idx: str, num_samples: int = None, randomize: bool = False) -> np.ndarray:

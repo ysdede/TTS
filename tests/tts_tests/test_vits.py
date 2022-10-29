@@ -378,25 +378,28 @@ class TestVits(unittest.TestCase):
             name = item1[0]
             param = item1[1]
             param_ref = item2[1]
-            assert (param != param_ref).any(), "param {} with shape {} not updated!! \n{}\n{}".format(
-                name, param.shape, param, param_ref
-            )
+            assert (
+                param != param_ref
+            ).any(), f"param {name} with shape {param.shape} not updated!! \n{param}\n{param_ref}"
+
             count = count + 1
 
     def _create_batch(self, config, batch_size):
         input_dummy, input_lengths, mel, spec, mel_lengths, _ = self._create_inputs(config, batch_size)
-        batch = {}
-        batch["tokens"] = input_dummy
-        batch["token_lens"] = input_lengths
-        batch["spec_lens"] = mel_lengths
-        batch["mel_lens"] = mel_lengths
-        batch["spec"] = spec
-        batch["mel"] = mel
-        batch["waveform"] = torch.rand(batch_size, 1, config.audio["sample_rate"] * 10).to(device)
-        batch["d_vectors"] = None
-        batch["speaker_ids"] = None
-        batch["language_ids"] = None
-        return batch
+        return {
+            "tokens": input_dummy,
+            "token_lens": input_lengths,
+            "spec_lens": mel_lengths,
+            "mel_lens": mel_lengths,
+            "spec": spec,
+            "mel": mel,
+            "waveform": torch.rand(
+                batch_size, 1, config.audio["sample_rate"] * 10
+            ).to(device),
+            "d_vectors": None,
+            "speaker_ids": None,
+            "language_ids": None,
+        }
 
     def test_train_step(self):
         # setup the model
@@ -543,8 +546,7 @@ class TestVits(unittest.TestCase):
         chkp_path = os.path.join(get_tests_output_path(), "dummy_glow_tts_checkpoint.pth")
         config = VitsConfig(VitsArgs(num_chars=32))
         model = Vits.init_from_config(config, verbose=False).to(device)
-        chkp = {}
-        chkp["model"] = model.state_dict()
+        chkp = {"model": model.state_dict()}
         torch.save(chkp, chkp_path)
         model.load_checkpoint(config, chkp_path)
         self.assertTrue(model.training)

@@ -66,8 +66,7 @@ class FiLM(nn.Module):
 
 @torch.jit.script
 def shif_and_scale(x, scale, shift):
-    o = shift + scale * x
-    return o
+    return shift + scale * x
 
 
 class UBlock(nn.Module):
@@ -112,10 +111,10 @@ class UBlock(nn.Module):
 
     def remove_weight_norm(self):
         nn.utils.remove_weight_norm(self.res_block)
-        for _, layer in enumerate(self.main_block):
+        for layer in self.main_block:
             if len(layer.state_dict()) != 0:
                 nn.utils.remove_weight_norm(layer)
-        for _, layer in enumerate(self.out_block):
+        for layer in self.out_block:
             if len(layer.state_dict()) != 0:
                 nn.utils.remove_weight_norm(layer)
 
@@ -154,7 +153,7 @@ class DBlock(nn.Module):
 
     def remove_weight_norm(self):
         nn.utils.remove_weight_norm(self.res_block)
-        for _, layer in enumerate(self.main_block):
+        for layer in self.main_block:
             if len(layer.state_dict()) != 0:
                 nn.utils.remove_weight_norm(layer)
 

@@ -78,10 +78,7 @@ class TTSTokenizer:
 
     def decode(self, token_ids: List[int]) -> str:
         """Decodes a sequence of IDs to a string of text."""
-        text = ""
-        for token_id in token_ids:
-            text += self.characters.id_to_char(token_id)
-        return text
+        return "".join(self.characters.id_to_char(token_id) for token_id in token_ids)
 
     def text_to_ids(self, text: str, language: str = None) -> List[int]:  # pylint: disable=unused-argument
         """Converts a string of text to a sequence of token IDs.
@@ -164,14 +161,12 @@ class TTSTokenizer:
             if config.characters and config.characters.characters_class:
                 CharactersClass = import_class(config.characters.characters_class)
                 characters, new_config = CharactersClass.init_from_config(config)
-            # set characters based on config
+            elif config.use_phonemes:
+                # init phoneme set
+                characters, new_config = IPAPhonemes().init_from_config(config)
             else:
-                if config.use_phonemes:
-                    # init phoneme set
-                    characters, new_config = IPAPhonemes().init_from_config(config)
-                else:
-                    # init character set
-                    characters, new_config = Graphemes().init_from_config(config)
+                # init character set
+                characters, new_config = Graphemes().init_from_config(config)
 
         else:
             characters, new_config = characters.init_from_config(config)

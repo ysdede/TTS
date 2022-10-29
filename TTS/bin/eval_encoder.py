@@ -33,15 +33,14 @@ def compute_encoder_accuracy(dataset_items, encoder_manager):
         else:
             predicted_label = None
 
-        if class_name is not None and predicted_label is not None:
-            is_equal = int(class_name == predicted_label)
-            if class_name not in class_acc_dict:
-                class_acc_dict[class_name] = [is_equal]
-            else:
-                class_acc_dict[class_name].append(is_equal)
-        else:
+        if class_name is None or predicted_label is None:
             raise RuntimeError("Error: class_name or/and predicted_label are None")
 
+        is_equal = int(class_name == predicted_label)
+        if class_name not in class_acc_dict:
+            class_acc_dict[class_name] = [is_equal]
+        else:
+            class_acc_dict[class_name].append(is_equal)
     acc_avg = 0
     for key, values in class_acc_dict.items():
         acc = sum(values) / len(values)

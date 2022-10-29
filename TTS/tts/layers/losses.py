@@ -150,8 +150,7 @@ class AttentionEntropyLoss(nn.Module):
         soft attention weights
         """
         entropy = torch.distributions.Categorical(probs=align).entropy()
-        loss = (entropy / np.log(align.shape[1])).mean()
-        return loss
+        return (entropy / np.log(align.shape[1])).mean()
 
 
 class BCELossMasked(nn.Module):
@@ -242,8 +241,7 @@ class GuidedAttentionLoss(torch.nn.Module):
         ga_masks = self._make_ga_masks(ilens, olens).to(att_ws.device)
         seq_masks = self._make_masks(ilens, olens).to(att_ws.device)
         losses = ga_masks * att_ws
-        loss = torch.mean(losses.masked_select(seq_masks))
-        return loss
+        return torch.mean(losses.masked_select(seq_masks))
 
     @staticmethod
     def _make_ga_mask(ilen, olen, sigma):
@@ -368,7 +366,6 @@ class TacotronLoss(torch.nn.Module):
         # the target should be set acccordingly
         postnet_target = linear_input if self.config.model.lower() in ["tacotron"] else mel_input
 
-        return_dict = {}
         # remove lengths if no masking is applied
         if not self.config.loss_masking:
             output_lens = None
@@ -384,9 +381,7 @@ class TacotronLoss(torch.nn.Module):
             if self.postnet_alpha > 0:
                 postnet_loss = self.criterion(postnet_output, postnet_target)
         loss = self.decoder_alpha * decoder_loss + self.postnet_alpha * postnet_loss
-        return_dict["decoder_loss"] = decoder_loss
-        return_dict["postnet_loss"] = postnet_loss
-
+        return_dict = {"decoder_loss": decoder_loss, "postnet_loss": postnet_loss}
         if self.use_capacitron_vae:
             # extract capacitron vae infos
             posterior_distribution, prior_distribution, beta = capacitron_vae_outputs
@@ -507,17 +502,16 @@ class GlowTTSLoss(torch.nn.Module):
         self.constant_factor = 0.5 * math.log(2 * math.pi)
 
     def forward(self, z, means, scales, log_det, y_lengths, o_dur_log, o_attn_dur, x_lengths):
-        return_dict = {}
         # flow loss - neg log likelihood
         pz = torch.sum(scales) + 0.5 * torch.sum(torch.exp(-2 * scales) * (z - means) ** 2)
         log_mle = self.constant_factor + (pz - torch.sum(log_det)) / (torch.sum(y_lengths) * z.shape[2])
         # duration loss - MSE
         loss_dur = torch.sum((o_dur_log - o_attn_dur) ** 2) / torch.sum(x_lengths)
-        # duration loss - huber loss
-        # loss_dur = torch.nn.functional.smooth_l1_loss(o_dur_log, o_attn_dur, reduction="sum") / torch.sum(x_lengths)
-        return_dict["loss"] = log_mle + loss_dur
-        return_dict["log_mle"] = log_mle
-        return_dict["loss_dur"] = loss_dur
+        return_dict = {
+            "loss": log_mle + loss_dur,
+            "log_mle": log_mle,
+            "loss_dur": loss_dur,
+        }
 
         # check if any loss is NaN
         for key, loss in return_dict.items():
@@ -536,7 +530,7 @@ def mse_loss_custom(x, y):
 class MDNLoss(nn.Module):
     """Mixture of Density Network Loss as described in https://arxiv.org/pdf/2003.01950.pdf."""
 
-    def forward(self, logp, text_lengths, mel_lengths):  # pylint: disable=no-self-use
+    def forward(self, logp, text_lengths, mel_lengths):    # pylint: disable=no-self-use
         """
         Shapes:
             mu: [B, D, T]
@@ -553,8 +547,7 @@ class MDNLoss(nn.Module):
             )
             log_alpha[:, :, t] = torch.logsumexp(prev_step + 1e-4, dim=-1) + logp[:, :, t]
         alpha_last = log_alpha[torch.arange(B), text_lengths - 1, mel_lengths - 1]
-        mdn_loss = -alpha_last.mean() / T_seq
-        return mdn_loss  # , log_prob_matrix
+        return -alpha_last.mean() / T_seq
 
 
 class AlignTTSLoss(nn.Module):
@@ -670,8 +663,7 @@ class VitsGeneratorLoss(nn.Module):
         kl = logs_p - logs_q - 0.5
         kl += 0.5 * ((z_p - m_p) ** 2) * torch.exp(-2.0 * logs_p)
         kl = torch.sum(kl * z_mask)
-        l = kl / torch.sum(z_mask)
-        return l
+        return kl / torch.sum(z_mask)
 
     @staticmethod
     def cosine_similarity_loss(gt_spk_emb, syn_spk_emb):
@@ -725,7 +717,7 @@ class VitsGeneratorLoss(nn.Module):
 
         if use_speaker_encoder_as_loss:
             loss_se = self.cosine_similarity_loss(gt_spk_emb, syn_spk_emb) * self.spk_encoder_loss_alpha
-            loss = loss + loss_se
+            loss += loss_se
             return_dict["loss_spk_encoder"] = loss_se
         # pass losses to the dict
         return_dict["loss_gen"] = loss_gen
@@ -759,12 +751,11 @@ class VitsDiscriminatorLoss(nn.Module):
 
     def forward(self, scores_disc_real, scores_disc_fake):
         loss = 0.0
-        return_dict = {}
         loss_disc, loss_disc_real, _ = self.discriminator_loss(
             scores_real=scores_disc_real, scores_fake=scores_disc_fake
         )
-        return_dict["loss_disc"] = loss_disc * self.disc_loss_alpha
-        loss = loss + return_dict["loss_disc"]
+        return_dict = {"loss_disc": loss_disc * self.disc_loss_alpha}
+        loss += return_dict["loss_disc"]
         return_dict["loss"] = loss
 
         for i, ldr in enumerate(loss_disc_real):
@@ -782,7 +773,7 @@ class ForwardTTSLoss(nn.Module):
         elif c.spec_loss_type == "l1":
             self.spec_loss = L1LossMasked(False)
         else:
-            raise ValueError(" [!] Unknown spec_loss_type {}".format(c.spec_loss_type))
+            raise ValueError(f" [!] Unknown spec_loss_type {c.spec_loss_type}")
 
         if c.duration_loss_type == "mse":
             self.dur_loss = MSELossMasked(False)
@@ -791,7 +782,7 @@ class ForwardTTSLoss(nn.Module):
         elif c.duration_loss_type == "huber":
             self.dur_loss = Huber()
         else:
-            raise ValueError(" [!] Unknown duration_loss_type {}".format(c.duration_loss_type))
+            raise ValueError(f" [!] Unknown duration_loss_type {c.duration_loss_type}")
 
         if c.model_args.use_aligner:
             self.aligner_loss = ForwardSumLoss()
@@ -836,33 +827,33 @@ class ForwardTTSLoss(nn.Module):
         return_dict = {}
         if hasattr(self, "ssim_loss") and self.ssim_loss_alpha > 0:
             ssim_loss = self.ssim(decoder_output, decoder_target, decoder_output_lens)
-            loss = loss + self.ssim_loss_alpha * ssim_loss
+            loss += self.ssim_loss_alpha * ssim_loss
             return_dict["loss_ssim"] = self.ssim_loss_alpha * ssim_loss
 
         if self.spec_loss_alpha > 0:
             spec_loss = self.spec_loss(decoder_output, decoder_target, decoder_output_lens)
-            loss = loss + self.spec_loss_alpha * spec_loss
+            loss += self.spec_loss_alpha * spec_loss
             return_dict["loss_spec"] = self.spec_loss_alpha * spec_loss
 
         if self.dur_loss_alpha > 0:
             log_dur_tgt = torch.log(dur_target.float() + 1)
             dur_loss = self.dur_loss(dur_output[:, :, None], log_dur_tgt[:, :, None], input_lens)
-            loss = loss + self.dur_loss_alpha * dur_loss
+            loss += self.dur_loss_alpha * dur_loss
             return_dict["loss_dur"] = self.dur_loss_alpha * dur_loss
 
         if hasattr(self, "pitch_loss") and self.pitch_loss_alpha > 0:
             pitch_loss = self.pitch_loss(pitch_output.transpose(1, 2), pitch_target.transpose(1, 2), input_lens)
-            loss = loss + self.pitch_loss_alpha * pitch_loss
+            loss += self.pitch_loss_alpha * pitch_loss
             return_dict["loss_pitch"] = self.pitch_loss_alpha * pitch_loss
 
         if hasattr(self, "aligner_loss") and self.aligner_loss_alpha > 0:
             aligner_loss = self.aligner_loss(alignment_logprob, input_lens, decoder_output_lens)
-            loss = loss + self.aligner_loss_alpha * aligner_loss
+            loss += self.aligner_loss_alpha * aligner_loss
             return_dict["loss_aligner"] = self.aligner_loss_alpha * aligner_loss
 
         if self.binary_alignment_loss_alpha > 0 and alignment_hard is not None:
             binary_alignment_loss = self._binary_alignment_loss(alignment_hard, alignment_soft)
-            loss = loss + self.binary_alignment_loss_alpha * binary_alignment_loss
+            loss += self.binary_alignment_loss_alpha * binary_alignment_loss
             if binary_loss_weight:
                 return_dict["loss_binary_alignment"] = (
                     self.binary_alignment_loss_alpha * binary_alignment_loss * binary_loss_weight

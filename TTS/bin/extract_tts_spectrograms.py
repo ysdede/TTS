@@ -46,7 +46,7 @@ def setup_loader(ap, r, verbose=False):
         dataset.compute_input_seq(c.num_loader_workers)
     dataset.preprocess_samples()
 
-    loader = DataLoader(
+    return DataLoader(
         dataset,
         batch_size=c.batch_size,
         shuffle=False,
@@ -56,7 +56,6 @@ def setup_loader(ap, r, verbose=False):
         num_workers=c.num_loader_workers,
         pin_memory=False,
     )
-    return loader
 
 
 def set_filename(wav_path, out_path):
@@ -68,8 +67,8 @@ def set_filename(wav_path, out_path):
     os.makedirs(os.path.join(out_path, "wav"), exist_ok=True)
     wavq_path = os.path.join(out_path, "quant", file_name)
     mel_path = os.path.join(out_path, "mel", file_name)
-    wav_gl_path = os.path.join(out_path, "wav_gl", file_name + ".wav")
-    wav_path = os.path.join(out_path, "wav", file_name + ".wav")
+    wav_gl_path = os.path.join(out_path, "wav_gl", f"{file_name}.wav")
+    wav_path = os.path.join(out_path, "wav", f"{file_name}.wav")
     return file_name, wavq_path, mel_path, wav_gl_path, wav_path
 
 
@@ -218,7 +217,7 @@ def extract_spectrograms(
 
     with open(os.path.join(output_path, metada_name), "w", encoding="utf-8") as f:
         for data in export_metadata:
-            f.write(f"{data[0]}|{data[1]+'.npy'}\n")
+            f.write(f"{data[0]}|{data[1]}.npy\n")
 
 
 def main(args):  # pylint: disable=redefined-outer-name
@@ -254,7 +253,7 @@ def main(args):  # pylint: disable=redefined-outer-name
         model.cuda()
 
     num_params = count_parameters(model)
-    print("\n > Model has {} parameters".format(num_params), flush=True)
+    print(f"\n > Model has {num_params} parameters", flush=True)
     # set r
     r = 1 if c.model.lower() == "glow_tts" else model.decoder.r
     own_loader = setup_loader(ap, r, verbose=True)

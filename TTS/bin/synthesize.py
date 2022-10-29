@@ -344,7 +344,7 @@ If you don't specify any models, then it uses LJSpeech based English model.
 
     # RUN THE SYNTHESIS
     if args.text:
-        print(" > Text: {}".format(args.text))
+        print(f" > Text: {args.text}")
 
     # kick it
     wav = synthesizer.tts(
@@ -359,7 +359,7 @@ If you don't specify any models, then it uses LJSpeech based English model.
     )
 
     # save the results
-    print(" > Saving output to {}".format(args.out_path))
+    print(f" > Saving output to {args.out_path}")
     synthesizer.save_wav(wav, args.out_path)
 
 

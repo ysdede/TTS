@@ -54,8 +54,7 @@ class WaveNetDecoder(nn.Module):
     def forward(self, x, x_mask=None, g=None):
         x = self.prenet(x) * x_mask
         x = self.wn(x, x_mask, g)
-        o = self.postnet(x) * x_mask
-        return o
+        return self.postnet(x) * x_mask
 
 
 class RelativePositionTransformerDecoder(nn.Module):
@@ -218,13 +217,11 @@ class Decoder(nn.Module):
         else:
             raise ValueError(f"[!] Unknown decoder type - {decoder_type}")
 
-    def forward(self, x, x_mask, g=None):  # pylint: disable=unused-argument
+    def forward(self, x, x_mask, g=None):    # pylint: disable=unused-argument
         """
         Args:
             x: [B, C, T]
             x_mask: [B, 1, T]
             g: [B, C_g, 1]
         """
-        # TODO: implement multi-speaker
-        o = self.decoder(x, x_mask, g)
-        return o
+        return self.decoder(x, x_mask, g)

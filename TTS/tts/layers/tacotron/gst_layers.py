@@ -18,9 +18,7 @@ class GST(nn.Module):
         # concat speaker_embedding
         if speaker_embedding is not None:
             enc_out = torch.cat([enc_out, speaker_embedding], dim=-1)
-        style_embed = self.style_token_layer(enc_out)
-
-        return style_embed
+        return self.style_token_layer(enc_out)
 
 
 class ReferenceEncoder(nn.Module):
@@ -103,10 +101,7 @@ class StyleTokenLayer(nn.Module):
         prosody_encoding = inputs.unsqueeze(1)
         # prosody_encoding: 3D tensor [batch_size, 1, encoding_size==128]
         tokens = torch.tanh(self.style_tokens).unsqueeze(0).expand(batch_size, -1, -1)
-        # tokens: 3D tensor [batch_size, num tokens, token embedding size]
-        style_embed = self.attention(prosody_encoding, tokens)
-
-        return style_embed
+        return self.attention(prosody_encoding, tokens)
 
 
 class MultiHeadAttention(nn.Module):

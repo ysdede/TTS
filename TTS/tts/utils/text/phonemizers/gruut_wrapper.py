@@ -54,7 +54,7 @@ class Gruut(BasePhonemizer):
     def name():
         return "gruut"
 
-    def phonemize_gruut(self, text: str, separator: str = "|", tie=False) -> str:  # pylint: disable=unused-argument
+    def phonemize_gruut(self, text: str, separator: str = "|", tie=False) -> str:    # pylint: disable=unused-argument
         """Convert input text to phonemes.
 
         Gruut phonemizes the given `str` by seperating each phoneme character with `separator`, even for characters
@@ -93,9 +93,9 @@ class Gruut(BasePhonemizer):
                             # Remove primary/secondary stress
                             word_phoneme = IPA.without_stress(word_phoneme)
 
-                        word_phoneme = word_phoneme.translate(GRUUT_TRANS_TABLE)
-
-                        if word_phoneme:
+                        if word_phoneme := word_phoneme.translate(
+                            GRUUT_TRANS_TABLE
+                        ):
                             # Flatten phonemes
                             word_phonemes.extend(word_phoneme)
 
@@ -103,8 +103,7 @@ class Gruut(BasePhonemizer):
                         ph_list.append(word_phonemes)
 
         ph_words = [separator.join(word_phonemes) for word_phonemes in ph_list]
-        ph = f"{separator} ".join(ph_words)
-        return ph
+        return f"{separator} ".join(ph_words)
 
     def _phonemize(self, text, separator):
         return self.phonemize_gruut(text, separator, tie=False)

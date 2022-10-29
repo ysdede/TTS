@@ -39,9 +39,8 @@ class BaseTrainerModel(TrainerModel):
         Returns:
             Dict: [description]
         """
-        outputs_dict = {"model_outputs": None}
         ...
-        return outputs_dict
+        return {"model_outputs": None}
 
     @abstractmethod
     def load_checkpoint(self, config: Coqpit, checkpoint_path: str, eval: bool = False, strict: bool = True) -> None:

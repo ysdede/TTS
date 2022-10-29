@@ -181,8 +181,7 @@ class TextSummary(nn.Module):
         )  # dynamic rnn sequence padding
         self.lstm.flatten_parameters()
         _, (ht, _) = self.lstm(packed_seqs)
-        last_output = ht[-1]
-        return last_output
+        return ht[-1]
 
 
 class PostEncoderMLP(nn.Module):

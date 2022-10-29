@@ -170,10 +170,7 @@ class Encoder(nn.Module):
             x_dp = x.detach()
         # final projection layer
         x_m = self.proj_m(x) * x_mask
-        if not self.mean_only:
-            x_logs = self.proj_s(x) * x_mask
-        else:
-            x_logs = torch.zeros_like(x_m)
+        x_logs = torch.zeros_like(x_m) if self.mean_only else self.proj_s(x) * x_mask
         # duration predictor
         logw = self.duration_predictor(x_dp, x_mask)
         return x_m, x_logs, logw, x_mask

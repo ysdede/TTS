@@ -331,7 +331,7 @@ def kata2phoneme(text: str) -> str:
             text = text[1:]
             res += x
             continue
-        res += " " + text[0]
+        res += f" {text[0]}"
         text = text[1:]
     res = _COLON_RX.sub(":", res)
     return res[1:]
@@ -363,15 +363,14 @@ def text2kata(text: str) -> str:
         word, yomi = parts[0], parts[1]
         if yomi:
             res.append(yomi)
-        else:
-            if word in _SYMBOL_TOKENS:
-                res.append(word)
-            elif word in ("っ", "ッ"):
-                res.append("ッ")
-            elif word in _NO_YOMI_TOKENS:
-                pass
-            else:
-                res.append(word)
+        elif (
+            word in _SYMBOL_TOKENS
+            or word not in ("っ", "ッ")
+            and word not in _NO_YOMI_TOKENS
+        ):
+            res.append(word)
+        elif word in ("っ", "ッ"):
+            res.append("ッ")
     return hira2kata("".join(res))
 
 

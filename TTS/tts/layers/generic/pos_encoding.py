@@ -51,19 +51,17 @@ class PositionalEncoding(nn.Module):
                     f"Sequence is {x.size(2)} but PositionalEncoding is"
                     f" limited to {self.pe.size(2)}. See max_len argument."
                 )
-            if mask is not None:
-                pos_enc = self.pe[:, :, : x.size(2)] * mask
-            else:
-                pos_enc = self.pe[:, :, : x.size(2)]
-            if self.use_scale:
-                x = x + self.scale * pos_enc
-            else:
-                x = x + pos_enc
+            pos_enc = (
+                self.pe[:, :, : x.size(2)] * mask
+                if mask is not None
+                else self.pe[:, :, : x.size(2)]
+            )
+
+            x = x + self.scale * pos_enc if self.use_scale else x + pos_enc
+        elif self.use_scale:
+            x = x + self.scale * self.pe[:, :, first_idx:last_idx]
         else:
-            if self.use_scale:
-                x = x + self.scale * self.pe[:, :, first_idx:last_idx]
-            else:
-                x = x + self.pe[:, :, first_idx:last_idx]
+            x = x + self.pe[:, :, first_idx:last_idx]
         if hasattr(self, "dropout"):
             x = self.dropout(x)
         return x

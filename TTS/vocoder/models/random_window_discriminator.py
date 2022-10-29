@@ -53,11 +53,12 @@ class DBlock(nn.Module):
         )
 
     def forward(self, inputs):
-        if self.downsample_factor > 1:
-            outputs = self.layers(self.donwsample_layer(inputs)) + self.donwsample_layer(self.residual(inputs))
-        else:
-            outputs = self.layers(inputs) + self.residual(inputs)
-        return outputs
+        return (
+            self.layers(self.donwsample_layer(inputs))
+            + self.donwsample_layer(self.residual(inputs))
+            if self.downsample_factor > 1
+            else self.layers(inputs) + self.residual(inputs)
+        )
 
 
 class ConditionalDiscriminator(nn.Module):

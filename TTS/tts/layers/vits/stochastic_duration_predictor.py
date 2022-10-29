@@ -142,9 +142,7 @@ class ConvFlow(nn.Module):
 
         x = torch.cat([x0, x1], 1) * x_mask
         logdet = torch.sum(logabsdet * x_mask, [1, 2])
-        if not reverse:
-            return x, logdet
-        return x
+        return x if reverse else (x, logdet)
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -290,5 +288,4 @@ class StochasticDurationPredictor(nn.Module):
             z = flow(z, x_mask, g=x, reverse=reverse)
 
         z0, _ = torch.split(z, [1, 1], 1)
-        logw = z0
-        return logw
+        return z0

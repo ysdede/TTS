@@ -164,13 +164,15 @@ class BaseTacotron(BaseTTS):
                 use_griffin_lim=True,
                 do_trim_silence=False,
             )
-            test_audios["{}-audio".format(idx)] = outputs_dict["wav"]
-            test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+            test_audios[f"{idx}-audio"] = outputs_dict["wav"]
+            test_figures[f"{idx}-prediction"] = plot_spectrogram(
                 outputs_dict["outputs"]["model_outputs"], self.ap, output_fig=False
             )
-            test_figures["{}-alignment".format(idx)] = plot_alignment(
+
+            test_figures[f"{idx}-alignment"] = plot_alignment(
                 outputs_dict["outputs"]["alignments"], output_fig=False
             )
+
         return {"figures": test_figures, "audios": test_audios}
 
     def test_log(

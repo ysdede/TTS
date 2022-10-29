@@ -24,9 +24,7 @@ def normalize_with_dictionary(text, dic):
 def normalize_english(text):
     def fn(m):
         word = m.group()
-        if word in english_dictionary:
-            return english_dictionary.get(word)
-        return word
+        return english_dictionary.get(word) if word in english_dictionary else word
 
     text = re.sub("([A-Za-z]+)", fn, text)
     return text

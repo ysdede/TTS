@@ -38,7 +38,7 @@ class SpecDiscriminator(nn.Module):
             y = y.squeeze(1)
             y = self.stft(y)
         y = y.unsqueeze(1)
-        for _, d in enumerate(self.discriminators):
+        for d in self.discriminators:
             y = d(y)
             y = F.leaky_relu(y, LRELU_SLOPE)
             fmap.append(y)

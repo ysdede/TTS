@@ -157,8 +157,7 @@ class AlignTTS(BaseTTS):
         exponential = -0.5 * torch.mean(
             torch._C._nn.mse_loss(expanded_y, expanded_mu, 0) / torch.pow(log_sigma.exp(), 2), dim=-1
         )  # B, L, T
-        logp = exponential - 0.5 * log_sigma.mean(dim=-1)
-        return logp
+        return exponential - 0.5 * log_sigma.mean(dim=-1)
 
     def compute_align_path(self, mu, log_sigma, y, x_mask, y_mask):
         # find the max alignment path
@@ -177,8 +176,7 @@ class AlignTTS(BaseTTS):
             y_lengths[y_lengths < 1] = 1
             y_mask = torch.unsqueeze(sequence_mask(y_lengths, None), 1).to(dr.dtype)
         attn_mask = torch.unsqueeze(x_mask, -1) * torch.unsqueeze(y_mask, 2)
-        attn = generate_path(dr, attn_mask.squeeze(1)).to(dr.dtype)
-        return attn
+        return generate_path(dr, attn_mask.squeeze(1)).to(dr.dtype)
 
     def expand_encoder_outputs(self, en, dr, x_mask, y_mask):
         """Generate attention alignment map from durations and
@@ -236,10 +234,7 @@ class AlignTTS(BaseTTS):
         o_en = self.encoder(x_emb, x_mask)
 
         # speaker conditioning for duration predictor
-        if g is not None:
-            o_en_dp = self._concat_speaker_embedding(o_en, g)
-        else:
-            o_en_dp = o_en
+        o_en_dp = self._concat_speaker_embedding(o_en, g) if g is not None else o_en
         return o_en, o_en_dp, x_mask, g
 
     def _forward_decoder(self, o_en, o_en_dp, dr, x_mask, y_lengths, g):
@@ -265,7 +260,7 @@ class AlignTTS(BaseTTS):
 
     def forward(
         self, x, x_lengths, y, y_lengths, aux_input={"d_vectors": None}, phase=None
-    ):  # pylint: disable=unused-argument
+    ):    # pylint: disable=unused-argument
         """
         Shapes:
             - x: :math:`[B, T_max]`
@@ -307,7 +302,7 @@ class AlignTTS(BaseTTS):
             o_de, attn = self._forward_decoder(o_en, o_en_dp, dr_mas, x_mask, y_lengths, g=g)
             o_dr_log = o_dr_log.squeeze(1)
         dr_mas_log = torch.log(dr_mas + 1).squeeze(1)
-        outputs = {
+        return {
             "model_outputs": o_de.transpose(1, 2),
             "alignments": attn,
             "durations_log": o_dr_log,
@@ -316,10 +311,9 @@ class AlignTTS(BaseTTS):
             "log_sigma": log_sigma,
             "logp": logp,
         }
-        return outputs
 
     @torch.no_grad()
-    def inference(self, x, aux_input={"d_vectors": None}):  # pylint: disable=unused-argument
+    def inference(self, x, aux_input={"d_vectors": None}):    # pylint: disable=unused-argument
         """
         Shapes:
             - x: :math:`[B, T_max]`
@@ -337,8 +331,7 @@ class AlignTTS(BaseTTS):
         o_dr = self.format_durations(o_dr_log, x_mask).squeeze(1)
         y_lengths = o_dr.sum(1)
         o_de, attn = self._forward_decoder(o_en, o_en_dp, o_dr, x_mask, y_lengths, g=g)
-        outputs = {"model_outputs": o_de.transpose(1, 2), "alignments": attn}
-        return outputs
+        return {"model_outputs": o_de.transpose(1, 2), "alignments": attn}
 
     def train_step(self, batch: dict, criterion: nn.Module):
         text_input = batch["text_input"]
@@ -416,17 +409,20 @@ class AlignTTS(BaseTTS):
         """Decide AlignTTS training phase"""
         if isinstance(config.phase_start_steps, list):
             vals = [i < global_step for i in config.phase_start_steps]
-            if not True in vals:
-                phase = 0
-            else:
-                phase = (
+            return (
+                0
+                if True not in vals
+                else (
                     len(config.phase_start_steps)
-                    - [i < global_step for i in config.phase_start_steps][::-1].index(True)
+                    - [i < global_step for i in config.phase_start_steps][
+                        ::-1
+                    ].index(True)
                     - 1
                 )
+            )
+
         else:
-            phase = None
-        return phase
+            return None
 
     def on_epoch_start(self, trainer):
         """Set AlignTTS training phase on epoch start."""

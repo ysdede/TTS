@@ -63,10 +63,9 @@ def plot_results(y_hat: torch.tensor, y: torch.tensor, ap: AudioProcessor, name_
     plt.tight_layout()
     plt.close()
 
-    figures = {
-        name_prefix + "spectrogram/fake": plot_spectrogram(spec_fake),
-        name_prefix + "spectrogram/real": plot_spectrogram(spec_real),
-        name_prefix + "spectrogram/diff": plot_spectrogram(spec_diff),
-        name_prefix + "speech_comparison": fig_wave,
+    return {
+        f"{name_prefix}spectrogram/fake": plot_spectrogram(spec_fake),
+        f"{name_prefix}spectrogram/real": plot_spectrogram(spec_real),
+        f"{name_prefix}spectrogram/diff": plot_spectrogram(spec_diff),
+        f"{name_prefix}speech_comparison": fig_wave,
     }
-    return figures

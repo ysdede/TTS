@@ -31,11 +31,8 @@ dataset_config = BaseDatasetConfig(
     language="en",
 )
 
-DATA_EXIST = True
-if not os.path.exists(c.data_path):
-    DATA_EXIST = False
-
-print(" > Dynamic data loader test: {}".format(DATA_EXIST))
+DATA_EXIST = bool(os.path.exists(c.data_path))
+print(f" > Dynamic data loader test: {DATA_EXIST}")
 
 
 class TestTTSDataset(unittest.TestCase):
@@ -76,89 +73,92 @@ class TestTTSDataset(unittest.TestCase):
         return dataloader, dataset
 
     def test_loader(self):
-        if ok_ljspeech:
-            dataloader, dataset = self._create_dataloader(1, 1, 0)
+        if not ok_ljspeech:
+            return
+        dataloader, dataset = self._create_dataloader(1, 1, 0)
 
-            for i, data in enumerate(dataloader):
-                if i == self.max_loader_iter:
-                    break
-                text_input = data["token_id"]
-                _ = data["token_id_lengths"]
-                speaker_name = data["speaker_names"]
-                linear_input = data["linear"]
-                mel_input = data["mel"]
-                mel_lengths = data["mel_lengths"]
-                _ = data["stop_targets"]
-                _ = data["item_idxs"]
-                wavs = data["waveform"]
+        for i, data in enumerate(dataloader):
+            if i == self.max_loader_iter:
+                break
+            text_input = data["token_id"]
+            _ = data["token_id_lengths"]
+            speaker_name = data["speaker_names"]
+            linear_input = data["linear"]
+            mel_input = data["mel"]
+            mel_lengths = data["mel_lengths"]
+            _ = data["stop_targets"]
+            _ = data["item_idxs"]
+            wavs = data["waveform"]
 
-                neg_values = text_input[text_input < 0]
-                check_count = len(neg_values)
+            neg_values = text_input[text_input < 0]
+            check_count = len(neg_values)
 
-                # check basic conditions
-                self.assertEqual(check_count, 0)
-                self.assertEqual(linear_input.shape[0], mel_input.shape[0], c.batch_size)
-                self.assertEqual(linear_input.shape[2], self.ap.fft_size // 2 + 1)
-                self.assertEqual(mel_input.shape[2], c.audio["num_mels"])
-                self.assertEqual(wavs.shape[1], mel_input.shape[1] * c.audio.hop_length)
-                self.assertIsInstance(speaker_name[0], str)
+            # check basic conditions
+            self.assertEqual(check_count, 0)
+            self.assertEqual(linear_input.shape[0], mel_input.shape[0], c.batch_size)
+            self.assertEqual(linear_input.shape[2], self.ap.fft_size // 2 + 1)
+            self.assertEqual(mel_input.shape[2], c.audio["num_mels"])
+            self.assertEqual(wavs.shape[1], mel_input.shape[1] * c.audio.hop_length)
+            self.assertIsInstance(speaker_name[0], str)
 
-                # make sure that the computed mels and the waveform match and correctly computed
-                mel_new = self.ap.melspectrogram(wavs[0].squeeze().numpy())
-                # remove padding in mel-spectrogram
-                mel_dataloader = mel_input[0].T.numpy()[:, : mel_lengths[0]]
-                # guarantee that both mel-spectrograms have the same size and that we will remove waveform padding
-                mel_new = mel_new[:, : mel_lengths[0]]
-                ignore_seg = -(1 + c.audio.win_length // c.audio.hop_length)
-                mel_diff = (mel_new[:, : mel_input.shape[1]] - mel_input[0].T.numpy())[:, 0:ignore_seg]
-                self.assertLess(abs(mel_diff.sum()), 1e-5)
+            # make sure that the computed mels and the waveform match and correctly computed
+            mel_new = self.ap.melspectrogram(wavs[0].squeeze().numpy())
+            # remove padding in mel-spectrogram
+            mel_dataloader = mel_input[0].T.numpy()[:, : mel_lengths[0]]
+            # guarantee that both mel-spectrograms have the same size and that we will remove waveform padding
+            mel_new = mel_new[:, : mel_lengths[0]]
+            ignore_seg = -(1 + c.audio.win_length // c.audio.hop_length)
+            mel_diff = (mel_new[:, : mel_input.shape[1]] - mel_input[0].T.numpy())[:, 0:ignore_seg]
+            self.assertLess(abs(mel_diff.sum()), 1e-5)
 
-                # check normalization ranges
-                if self.ap.symmetric_norm:
-                    self.assertLessEqual(mel_input.max(), self.ap.max_norm)
-                    self.assertGreaterEqual(
-                        mel_input.min(), -self.ap.max_norm  # pylint: disable=invalid-unary-operand-type
-                    )
-                    self.assertLess(mel_input.min(), 0)
-                else:
-                    self.assertLessEqual(mel_input.max(), self.ap.max_norm)
-                    self.assertGreaterEqual(mel_input.min(), 0)
+            # check normalization ranges
+            if self.ap.symmetric_norm:
+                self.assertLessEqual(mel_input.max(), self.ap.max_norm)
+                self.assertGreaterEqual(
+                    mel_input.min(), -self.ap.max_norm  # pylint: disable=invalid-unary-operand-type
+                )
+                self.assertLess(mel_input.min(), 0)
+            else:
+                self.assertLessEqual(mel_input.max(), self.ap.max_norm)
+                self.assertGreaterEqual(mel_input.min(), 0)
 
     def test_batch_group_shuffle(self):
-        if ok_ljspeech:
-            dataloader, dataset = self._create_dataloader(2, c.r, 16)
-            last_length = 0
-            frames = dataset.samples
-            for i, data in enumerate(dataloader):
-                if i == self.max_loader_iter:
-                    break
-                mel_lengths = data["mel_lengths"]
-                avg_length = mel_lengths.numpy().mean()
-            dataloader.dataset.preprocess_samples()
-            is_items_reordered = False
-            for idx, item in enumerate(dataloader.dataset.samples):
-                if item != frames[idx]:
-                    is_items_reordered = True
-                    break
-            self.assertGreaterEqual(avg_length, last_length)
-            self.assertTrue(is_items_reordered)
+        if not ok_ljspeech:
+            return
+        dataloader, dataset = self._create_dataloader(2, c.r, 16)
+        last_length = 0
+        frames = dataset.samples
+        for i, data in enumerate(dataloader):
+            if i == self.max_loader_iter:
+                break
+            mel_lengths = data["mel_lengths"]
+            avg_length = mel_lengths.numpy().mean()
+        dataloader.dataset.preprocess_samples()
+        is_items_reordered = any(
+            item != frames[idx]
+            for idx, item in enumerate(dataloader.dataset.samples)
+        )
+
+        self.assertGreaterEqual(avg_length, last_length)
+        self.assertTrue(is_items_reordered)
 
     def test_start_by_longest(self):
         """Test start_by_longest option.
 
         Ther first item of the fist batch must be longer than all the other items.
         """
-        if ok_ljspeech:
-            dataloader, _ = self._create_dataloader(2, c.r, 0, True)
-            dataloader.dataset.preprocess_samples()
-            for i, data in enumerate(dataloader):
-                if i == self.max_loader_iter:
-                    break
-                mel_lengths = data["mel_lengths"]
-                if i == 0:
-                    max_len = mel_lengths[0]
-                print(mel_lengths)
-                self.assertTrue(all(max_len >= mel_lengths))
+        if not ok_ljspeech:
+            return
+        dataloader, _ = self._create_dataloader(2, c.r, 0, True)
+        dataloader.dataset.preprocess_samples()
+        for i, data in enumerate(dataloader):
+            if i == self.max_loader_iter:
+                break
+            mel_lengths = data["mel_lengths"]
+            if i == 0:
+                max_len = mel_lengths[0]
+            print(mel_lengths)
+            self.assertTrue(all(max_len >= mel_lengths))
 
     def test_padding_and_spectrograms(self):
         def check_conditions(idx, linear_input, mel_input, stop_target, mel_lengths):
@@ -198,14 +198,14 @@ class TestTTSDataset(unittest.TestCase):
                 # check mel-spec correctness
                 mel_spec = mel_input[0].cpu().numpy()
                 wav = self.ap.inv_melspectrogram(mel_spec.T)
-                self.ap.save_wav(wav, OUTPATH + "/mel_inv_dataloader.wav")
-                shutil.copy(item_idx[0], OUTPATH + "/mel_target_dataloader.wav")
+                self.ap.save_wav(wav, f"{OUTPATH}/mel_inv_dataloader.wav")
+                shutil.copy(item_idx[0], f"{OUTPATH}/mel_target_dataloader.wav")
 
                 # check linear-spec
                 linear_spec = linear_input[0].cpu().numpy()
                 wav = self.ap.inv_spectrogram(linear_spec.T)
-                self.ap.save_wav(wav, OUTPATH + "/linear_inv_dataloader.wav")
-                shutil.copy(item_idx[0], OUTPATH + "/linear_target_dataloader.wav")
+                self.ap.save_wav(wav, f"{OUTPATH}/linear_inv_dataloader.wav")
+                shutil.copy(item_idx[0], f"{OUTPATH}/linear_target_dataloader.wav")
 
                 # check the outputs
                 check_conditions(0, linear_input, mel_input, stop_target, mel_lengths)
@@ -223,11 +223,7 @@ class TestTTSDataset(unittest.TestCase):
                 item_idx = data["item_idxs"]
 
                 # set id to the longest sequence in the batch
-                if mel_lengths[0] > mel_lengths[1]:
-                    idx = 0
-                else:
-                    idx = 1
-
+                idx = 0 if mel_lengths[0] > mel_lengths[1] else 1
                 # check the longer item in the batch
                 check_conditions(idx, linear_input, mel_input, stop_target, mel_lengths)
 

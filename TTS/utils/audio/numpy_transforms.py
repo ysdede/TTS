@@ -46,15 +46,11 @@ def millisec_to_length(
 
 
 def _log(x, base):
-    if base == 10:
-        return np.log10(x)
-    return np.log(x)
+    return np.log10(x) if base == 10 else np.log(x)
 
 
 def _exp(x, base):
-    if base == 10:
-        return np.power(10, x)
-    return np.exp(x)
+    return np.power(10, x) if base == 10 else np.exp(x)
 
 
 def amp_to_db(*, x: np.ndarray = None, gain: float = 1, base: int = 10, **kwargs) -> np.ndarray:
@@ -236,9 +232,7 @@ def compute_stft_paddings(
     """Compute paddings used by Librosa's STFT. Compute right padding (final frame) or both sides padding
     (first and final frames)"""
     pad = (x.shape[0] // hop_length + 1) * hop_length - x.shape[0]
-    if not pad_two_sides:
-        return 0, pad
-    return pad // 2, pad // 2 + pad % 2
+    return (pad // 2, pad // 2 + pad % 2) if pad_two_sides else (0, pad)
 
 
 def compute_f0(
@@ -327,12 +321,16 @@ def find_endpoint(
         int: Last point without silence.
     """
     window_length = int(sample_rate * min_silence_sec)
-    hop_length = int(window_length / 4)
+    hop_length = window_length // 4
     threshold = db_to_amp(x=-trim_db, gain=gain, base=base)
-    for x in range(hop_length, len(wav) - window_length, hop_length):
-        if np.max(wav[x : x + window_length]) < threshold:
-            return x + hop_length
-    return len(wav)
+    return next(
+        (
+            x + hop_length
+            for x in range(hop_length, len(wav) - window_length, hop_length)
+            if np.max(wav[x : x + window_length]) < threshold
+        ),
+        len(wav),
+    )
 
 
 def trim_silence(
@@ -380,8 +378,7 @@ def rms_volume_norm(*, x: np.ndarray, db_level: float = -27.0, **kwargs) -> np.n
         np.ndarray: RMS normalized waveform.
     """
     assert -99 <= db_level <= 0, " [!] db_level should be between -99 and 0"
-    wav = rms_norm(wav=x, db_level=db_level)
-    return wav
+    return rms_norm(wav=x, db_level=db_level)
 
 
 def load_wav(*, filename: str, sample_rate: int = None, resample: bool = False, **kwargs) -> np.ndarray:
@@ -430,8 +427,7 @@ def mulaw_encode(*, wav: np.ndarray, mulaw_qc: int, **kwargs) -> np.ndarray:
 def mulaw_decode(*, wav, mulaw_qc: int, **kwargs) -> np.ndarray:
     """Recovers waveform from quantized values."""
     mu = 2**mulaw_qc - 1
-    x = np.sign(wav) / mu * ((1 + mu) ** np.abs(wav) - 1)
-    return x
+    return np.sign(wav) / mu * ((1 + mu) ** np.abs(wav) - 1)
 
 
 def encode_16bits(*, x: np.ndarray, **kwargs) -> np.ndarray:

@@ -81,7 +81,7 @@ if __name__ == "__main__":
     audio_files = list(zip(audio_files, len(audio_files) * [args.output_sr]))
     with Pool(processes=args.n_jobs) as p:
         with tqdm(total=len(audio_files)) as pbar:
-            for i, _ in enumerate(p.imap_unordered(resample_file, audio_files)):
+            for _ in p.imap_unordered(resample_file, audio_files):
                 pbar.update()
 
     print("Done !")

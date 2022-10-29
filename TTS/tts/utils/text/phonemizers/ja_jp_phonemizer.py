@@ -39,9 +39,7 @@ class JA_JP_Phonemizer(BasePhonemizer):
 
     def _phonemize(self, text: str, separator: str = "|") -> str:
         ph = japanese_text_to_phonemes(text)
-        if separator is not None or separator != "":
-            return separator.join(ph)
-        return ph
+        return separator.join(ph) if separator is not None or separator != "" else ph
 
     def phonemize(self, text: str, separator="|") -> str:
         """Custom phonemize for JP_JA

@@ -174,8 +174,7 @@ class GlowTTS(BaseTTS):
         if speaker_ids is not None and not hasattr(self, "emb_g"):
             raise ValueError("[!] Cannot use speaker-ids without enabling speaker embedding.")
 
-        g = speaker_ids if speaker_ids is not None else d_vectors
-        return g
+        return speaker_ids if speaker_ids is not None else d_vectors
 
     def _speaker_embedding(self, aux_input: Dict) -> Union[torch.tensor, None]:
         g = self._set_speaker_input(aux_input)
@@ -193,7 +192,7 @@ class GlowTTS(BaseTTS):
 
     def forward(
         self, x, x_lengths, y, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
-    ):  # pylint: disable=dangerous-default-value
+    ):    # pylint: disable=dangerous-default-value
         """
         Args:
             x (torch.Tensor):
@@ -249,7 +248,7 @@ class GlowTTS(BaseTTS):
             attn = maximum_path(logp, attn_mask.squeeze(1)).unsqueeze(1).detach()
         y_mean, y_log_scale, o_attn_dur = self.compute_outputs(attn, o_mean, o_log_scale, x_mask)
         attn = attn.squeeze(1).permute(0, 2, 1)
-        outputs = {
+        return {
             "z": z.transpose(1, 2),
             "logdet": logdet,
             "y_mean": y_mean.transpose(1, 2),
@@ -258,12 +257,11 @@ class GlowTTS(BaseTTS):
             "durations_log": o_dur_log.transpose(1, 2),
             "total_durations_log": o_attn_dur.transpose(1, 2),
         }
-        return outputs
 
     @torch.no_grad()
     def inference_with_MAS(
         self, x, x_lengths, y=None, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
-    ):  # pylint: disable=dangerous-default-value
+    ):    # pylint: disable=dangerous-default-value
         """
         It's similar to the teacher forcing in Tacotron.
         It was proposed in: https://arxiv.org/abs/2104.05557
@@ -305,7 +303,7 @@ class GlowTTS(BaseTTS):
 
         # reverse the decoder and predict using the aligned distribution
         y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
-        outputs = {
+        return {
             "model_outputs": z.transpose(1, 2),
             "logdet": logdet,
             "y_mean": y_mean.transpose(1, 2),
@@ -314,12 +312,11 @@ class GlowTTS(BaseTTS):
             "durations_log": o_dur_log.transpose(1, 2),
             "total_durations_log": o_attn_dur.transpose(1, 2),
         }
-        return outputs
 
     @torch.no_grad()
     def decoder_inference(
         self, y, y_lengths=None, aux_input={"d_vectors": None, "speaker_ids": None}
-    ):  # pylint: disable=dangerous-default-value
+    ):    # pylint: disable=dangerous-default-value
         """
         Shapes:
             - y: :math:`[B, T, C]`
@@ -334,8 +331,7 @@ class GlowTTS(BaseTTS):
         z, logdet = self.decoder(y, y_mask, g=g, reverse=False)
         # reverse decoder and predict
         y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
-        outputs = {}
-        outputs["model_outputs"] = y.transpose(1, 2)
+        outputs = {"model_outputs": y.transpose(1, 2)}
         outputs["logdet"] = logdet
         return outputs
 
@@ -363,7 +359,7 @@ class GlowTTS(BaseTTS):
         # decoder pass
         y, logdet = self.decoder(z, y_mask, g=g, reverse=True)
         attn = attn.squeeze(1).permute(0, 2, 1)
-        outputs = {
+        return {
             "model_outputs": y.transpose(1, 2),
             "logdet": logdet,
             "y_mean": y_mean.transpose(1, 2),
@@ -372,7 +368,6 @@ class GlowTTS(BaseTTS):
             "durations_log": o_dur_log.transpose(1, 2),
             "total_durations_log": o_attn_dur.transpose(1, 2),
         }
-        return outputs
 
     def train_step(self, batch: dict, criterion: nn.Module):
         """A single training step. Forward pass and loss computation. Run data depended initialization for the
@@ -501,11 +496,15 @@ class GlowTTS(BaseTTS):
                     do_trim_silence=False,
                 )
 
-                test_audios["{}-audio".format(idx)] = outputs["wav"]
-                test_figures["{}-prediction".format(idx)] = plot_spectrogram(
+                test_audios[f"{idx}-audio"] = outputs["wav"]
+                test_figures[f"{idx}-prediction"] = plot_spectrogram(
                     outputs["outputs"]["model_outputs"], self.ap, output_fig=False
                 )
-                test_figures["{}-alignment".format(idx)] = plot_alignment(outputs["alignments"], output_fig=False)
+
+                test_figures[f"{idx}-alignment"] = plot_alignment(
+                    outputs["alignments"], output_fig=False
+                )
+
         return test_figures, test_audios
 
     def preprocess(self, y, y_lengths, y_max_length, attn=None):

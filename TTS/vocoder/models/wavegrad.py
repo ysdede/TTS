@@ -103,11 +103,8 @@ class Wavegrad(BaseVocoder):
             self.apply_weight_norm()
 
     def forward(self, x, spectrogram, noise_scale):
-        shift_and_scale = []
-
         x = self.y_conv(x)
-        shift_and_scale.append(self.film[0](x, noise_scale))
-
+        shift_and_scale = [self.film[0](x, noise_scale)]
         for film, layer in zip(self.film[1:], self.dblocks):
             x = layer(x)
             shift_and_scale.append(film(x, noise_scale))
@@ -175,21 +172,21 @@ class Wavegrad(BaseVocoder):
         self.sigma = ((1.0 - self.alpha_hat[:-1]) / (1.0 - self.alpha_hat[1:]) * self.beta[1:]) ** 0.5
 
     def remove_weight_norm(self):
-        for _, layer in enumerate(self.dblocks):
+        for layer in self.dblocks:
             if len(layer.state_dict()) != 0:
                 try:
                     nn.utils.remove_weight_norm(layer)
                 except ValueError:
                     layer.remove_weight_norm()
 
-        for _, layer in enumerate(self.film):
+        for layer in self.film:
             if len(layer.state_dict()) != 0:
                 try:
                     nn.utils.remove_weight_norm(layer)
                 except ValueError:
                     layer.remove_weight_norm()
 
-        for _, layer in enumerate(self.ublocks):
+        for layer in self.ublocks:
             if len(layer.state_dict()) != 0:
                 try:
                     nn.utils.remove_weight_norm(layer)
@@ -201,15 +198,15 @@ class Wavegrad(BaseVocoder):
         nn.utils.remove_weight_norm(self.y_conv)
 
     def apply_weight_norm(self):
-        for _, layer in enumerate(self.dblocks):
+        for layer in self.dblocks:
             if len(layer.state_dict()) != 0:
                 layer.apply_weight_norm()
 
-        for _, layer in enumerate(self.film):
+        for layer in self.film:
             if len(layer.state_dict()) != 0:
                 layer.apply_weight_norm()
 
-        for _, layer in enumerate(self.ublocks):
+        for layer in self.ublocks:
             if len(layer.state_dict()) != 0:
                 layer.apply_weight_norm()
 
@@ -232,14 +229,14 @@ class Wavegrad(BaseVocoder):
                 config["test_noise_schedule"]["max_val"],
                 config["test_noise_schedule"]["num_steps"],
             )
-            self.compute_noise_level(betas)
         else:
             betas = np.linspace(
                 config["train_noise_schedule"]["min_val"],
                 config["train_noise_schedule"]["max_val"],
                 config["train_noise_schedule"]["num_steps"],
             )
-            self.compute_noise_level(betas)
+
+        self.compute_noise_level(betas)
 
     def train_step(self, batch: Dict, criterion: Dict) -> Tuple[Dict, Dict]:
         # format data
@@ -323,16 +320,17 @@ class Wavegrad(BaseVocoder):
             verbose=verbose,
         )
         sampler = DistributedSampler(dataset) if num_gpus > 1 else None
-        loader = DataLoader(
+        return DataLoader(
             dataset,
             batch_size=self.config.batch_size,
             shuffle=num_gpus <= 1,
             drop_last=False,
             sampler=sampler,
-            num_workers=self.config.num_eval_loader_workers if is_eval else self.config.num_loader_workers,
+            num_workers=self.config.num_eval_loader_workers
+            if is_eval
+            else self.config.num_loader_workers,
             pin_memory=False,
         )
-        return loader
 
     def on_epoch_start(self, trainer):  # pylint: disable=unused-argument
         noise_schedule = self.config["train_noise_schedule"]

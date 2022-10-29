@@ -140,10 +140,7 @@ class GAN(BaseVocoder):
                 if isinstance(D_out_fake, tuple):
                     # self.model_d returns scores and features
                     scores_fake, feats_fake = D_out_fake
-                    if D_out_real is None:
-                        scores_real, feats_real = None, None
-                    else:
-                        scores_real, feats_real = D_out_real
+                    scores_real, feats_real = (None, None) if D_out_real is None else D_out_real
                 else:
                     # model D returns only scores
                     scores_fake = D_out_fake
@@ -153,14 +150,16 @@ class GAN(BaseVocoder):
                 loss_dict = criterion[optimizer_idx](scores_fake, scores_real)
                 outputs = {"model_outputs": y_hat}
 
-        if optimizer_idx == 1:
+        elif optimizer_idx == 1:
             # GENERATOR loss
             scores_fake, feats_fake, feats_real = None, None, None
             if self.train_disc:
-                if len(signature(self.model_d.forward).parameters) == 2:
-                    D_out_fake = self.model_d(self.y_hat_g, x)
-                else:
-                    D_out_fake = self.model_d(self.y_hat_g)
+                D_out_fake = (
+                    self.model_d(self.y_hat_g, x)
+                    if len(signature(self.model_d.forward).parameters) == 2
+                    else self.model_d(self.y_hat_g)
+                )
+
                 D_out_real = None
 
                 if self.config.use_feat_match_loss:
@@ -352,16 +351,17 @@ class GAN(BaseVocoder):
         )
         dataset.shuffle_mapping()
         sampler = DistributedSampler(dataset, shuffle=True) if num_gpus > 1 else None
-        loader = DataLoader(
+        return DataLoader(
             dataset,
             batch_size=1 if is_eval else config.batch_size,
             shuffle=num_gpus == 0,
             drop_last=False,
             sampler=sampler,
-            num_workers=config.num_eval_loader_workers if is_eval else config.num_loader_workers,
+            num_workers=config.num_eval_loader_workers
+            if is_eval
+            else config.num_loader_workers,
             pin_memory=False,
         )
-        return loader
 
     def get_criterion(self):
         """Return criterions for the optimizers"""

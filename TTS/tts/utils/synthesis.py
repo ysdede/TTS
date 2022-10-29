@@ -9,16 +9,12 @@ def numpy_to_torch(np_array, dtype, cuda=False):
     if np_array is None:
         return None
     tensor = torch.as_tensor(np_array, dtype=dtype)
-    if cuda:
-        return tensor.cuda()
-    return tensor
+    return tensor.cuda() if cuda else tensor
 
 
 def compute_style_mel(style_wav, ap, cuda=False):
     style_mel = torch.FloatTensor(ap.melspectrogram(ap.load_wav(style_wav, sr=ap.sample_rate))).unsqueeze(0)
-    if cuda:
-        return style_mel.cuda()
-    return style_mel
+    return style_mel.cuda() if cuda else style_mel
 
 
 def run_model_torch(
@@ -43,11 +39,8 @@ def run_model_torch(
         Dict: model outputs.
     """
     input_lengths = torch.tensor(inputs.shape[1:2]).to(inputs.device)
-    if hasattr(model, "module"):
-        _func = model.module.inference
-    else:
-        _func = model.inference
-    outputs = _func(
+    _func = model.module.inference if hasattr(model, "module") else model.inference
+    return _func(
         inputs,
         aux_input={
             "x_lengths": input_lengths,
@@ -58,7 +51,6 @@ def run_model_torch(
             "language_ids": language_id,
         },
     )
-    return outputs
 
 
 def trim_silence(wav, ap):
@@ -66,20 +58,18 @@ def trim_silence(wav, ap):
 
 
 def inv_spectrogram(postnet_output, ap, CONFIG):
-    if CONFIG.model.lower() in ["tacotron"]:
-        wav = ap.inv_spectrogram(postnet_output.T)
-    else:
-        wav = ap.inv_melspectrogram(postnet_output.T)
-    return wav
+    return (
+        ap.inv_spectrogram(postnet_output.T)
+        if CONFIG.model.lower() in ["tacotron"]
+        else ap.inv_melspectrogram(postnet_output.T)
+    )
 
 
 def id_to_torch(aux_id, cuda=False):
     if aux_id is not None:
         aux_id = np.asarray(aux_id)
         aux_id = torch.from_numpy(aux_id)
-    if cuda:
-        return aux_id.cuda()
-    return aux_id
+    return aux_id.cuda() if cuda else aux_id
 
 
 def embedding_to_torch(d_vector, cuda=False):
@@ -87,9 +77,7 @@ def embedding_to_torch(d_vector, cuda=False):
         d_vector = np.asarray(d_vector)
         d_vector = torch.from_numpy(d_vector).type(torch.FloatTensor)
         d_vector = d_vector.squeeze().unsqueeze(0)
-    if cuda:
-        return d_vector.cuda()
-    return d_vector
+    return d_vector.cuda() if cuda else d_vector
 
 
 # TODO: perform GL with pytorch for batching
@@ -229,13 +217,12 @@ def synthesis(
                 wav = trim_silence(wav, model.ap)
     else:  # [T,]
         wav = model_outputs
-    return_dict = {
+    return {
         "wav": wav,
         "alignments": alignments,
         "text_inputs": text_inputs,
         "outputs": outputs,
     }
-    return return_dict
 
 
 def transfer_voice(
@@ -297,10 +284,12 @@ def transfer_voice(
     # load reference_wav audio
     reference_wav = embedding_to_torch(
         model.ap.load_wav(
-            reference_wav, sr=model.args.encoder_sample_rate if model.args.encoder_sample_rate else model.ap.sample_rate
+            reference_wav,
+            sr=model.args.encoder_sample_rate or model.ap.sample_rate,
         ),
         cuda=use_cuda,
     )
+
 
     if hasattr(model, "module"):
         _func = model.module.inference_voice_conversion

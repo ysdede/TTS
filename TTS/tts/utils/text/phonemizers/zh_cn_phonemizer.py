@@ -34,8 +34,7 @@ class ZH_CN_Phonemizer(BasePhonemizer):
 
     @staticmethod
     def phonemize_zh_cn(text: str, separator: str = "|") -> str:
-        ph = chinese_text_to_phonemes(text, separator)
-        return ph
+        return chinese_text_to_phonemes(text, separator)
 
     def _phonemize(self, text, separator):
         return self.phonemize_zh_cn(text, separator)
